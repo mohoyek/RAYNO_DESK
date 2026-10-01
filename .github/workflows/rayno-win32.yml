@@ -102,7 +102,8 @@ jobs:
           cargo update -p sciter-rs --precise 674e07d3066ca9a92ced3816203ab6b652629d1e
           cargo build --locked --features inline,vram,hwcodec --release --bins
           mkdir -p ./Release
-          mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
+          # Rename before packing so the extracted process is RAYNODesk.exe, not rustdesk.exe.
+          mv ./target/release/rustdesk.exe ./Release/RAYNODesk.exe
           curl -LJ -o ./Release/sciter.dll https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x32/sciter.dll
           curl -LJ -o ./usbmmidd_v2.zip https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip
           unzip usbmmidd_v2.zip
@@ -141,14 +142,15 @@ jobs:
           sed -i '/dpiAware/d' res/manifest.xml
           pushd ./libs/portable
           pip3 install -r requirements.txt
-          python3 ./generate.py -f ../../Release/ -o . -e ../../Release/rustdesk.exe
+          python3 ./generate.py -f ../../Release/ -o . -e ../../Release/RAYNODesk.exe
           popd
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/RAYNODesk-${{ env.VERSION }}-x86-sciter.exe
+          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/RAYNODesk-${{ env.VERSION }}-x86.exe
 
       - name: Publish Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
-        if: env.SIGN_BASE_URL != '-2'
+        # Published unsigned when SIGN_BASE_URL is unset: the portable exe needs no
+        # signing secret to be usable, only to be free of the SmartScreen warning.
         with:
           prerelease: true
           tag_name: ${{ env.TAG_NAME }}

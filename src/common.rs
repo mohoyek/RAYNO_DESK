@@ -131,6 +131,12 @@ fn apply_client_branding() {
         .write()
         .unwrap()
         .insert(keys::OPTION_HIDE_POWERED_BY_ME.to_owned(), "Y".to_owned());
+    // Read by get_option via DEFAULT_LOCAL_SETTINGS, below any option the user has
+    // saved, so picking another language in the menu still wins.
+    config::DEFAULT_LOCAL_SETTINGS
+        .write()
+        .unwrap()
+        .insert(keys::OPTION_LANGUAGE.to_owned(), "fa".to_owned());
 }
 
 pub fn global_init() -> bool {
