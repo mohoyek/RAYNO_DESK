@@ -4,7 +4,10 @@ stdout.println("is_xfce: ", is_xfce);
 
 // See default height in common.tis `msgbox()`.
 const msgbox_default_height = 180;
-const incoming_only_width = 180;
+// The main window has a fixed size, so popups are sized against it.
+const window_width = 400;
+const window_height = 600;
+const incoming_only_width = window_width;
 
 const outgoing_only = handler.is_outgoing_only();
 const incoming_only = handler.is_incoming_only();
@@ -21,11 +24,8 @@ const disable_change_permanent_password = handler.get_builtin_option("disable-ch
 const disable_change_id = handler.get_builtin_option("disable-change-id") == "Y";
 
 // html min-width, min-height not working on mac, below works for all
-if (incoming_only) {
-  view.windowMinSize = (scaleIt(incoming_only_width), scaleIt((handler.is_installed() || disable_installation) ? 300 : 390));
-} else {
-  view.windowMinSize = (scaleIt(560), scaleIt(300));
-}
+view.windowMinSize = (scaleIt(window_width), scaleIt(window_height));
+view.windowMaxSize = (scaleIt(window_width), scaleIt(window_height));
 
 var app;
 var tmp = handler.get_connect_status();
@@ -717,8 +717,8 @@ class App: Reactor.Component
                         {is_custom_client && handler.get_builtin_option("hide-powered-by-me") != "Y" ? <div .link #powered-by style="opacity:0.5;font-size:0.8em;text-decoration:underline">{translate('powered_by_me')}</div> : ""}
                         <div .title style="flow:horizontal; position:relative; height:1.6em; line-height:1.6em">
                             <span>{translate('Your Desktop')}</span>
-                            {outgoing_only ? <span .link #open-settings style="position:absolute; right:0; bottom:0; transform:scale(0.6); transform-origin:right bottom; opacity:0.85">{svg_menu}</span> : ""}
                         </div>
+                        {!disable_settings && <div><button .button .outline #open-settings style="width:*; margin-top:0.5em; margin-bottom:0.5em;">{translate('Settings')}</button></div>}
                         <div .lighter-text>{outgoing_only ? translate('outgoing_only_desk_tip') : translate('desk_tip')}</div>
                         {outgoing_only ? <div style="position:absolute; left:-10000px; top:-10000px; width:0; height:0; overflow:hidden"><MyIdMenu /></div> : ""}
                         {!outgoing_only && <div .your-desktop>
@@ -1378,17 +1378,7 @@ function self.closing() {
 }
 
 function self.ready() {
-    var r = handler.get_size();
-    if (isReasonableSize(r) && r[2] > 0) {
-        var (sx, sy, sw, sh) = view.screenBox(#workarea, #rectw);
-        if (r[2] >= sw && r[3] >= sh) {
-            self.timer(1ms, function() { view.windowState = View.WINDOW_MAXIMIZED; });
-        } else {
-            view.move(r[0], r[1], incoming_only ? scaleIt(incoming_only_width) : r[2], r[3]);
-        }
-    } else {
-        centerize(scaleIt(incoming_only ? incoming_only_width : 800), scaleIt(incoming_only ? 390 : 600));
-    }
+    centerize(scaleIt(window_width), scaleIt(window_height));
     if (!handler.get_remote_id()) {
         view.focus = $(#remote_id);
     }

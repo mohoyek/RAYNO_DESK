@@ -137,6 +137,12 @@ fn apply_client_branding() {
         .write()
         .unwrap()
         .insert(keys::OPTION_LANGUAGE.to_owned(), "fa".to_owned());
+    // Read by the Sciter UI as get_option("allow-darktheme"). Defaulting to "Y" here
+    // still lets the user turn it off: "N" differs from this default and is saved.
+    config::DEFAULT_SETTINGS
+        .write()
+        .unwrap()
+        .insert("allow-darktheme".to_owned(), "Y".to_owned());
 }
 
 pub fn global_init() -> bool {
