@@ -152,7 +152,10 @@ jobs:
         with:
           prerelease: true
           # New tag per run, so every build gets its own release instead of overwriting
-          # the previous one. The asset name stays stable inside that release.
+          # the previous one. The asset name stays stable inside that release. Without
+          # target_commitish the new tag would point at the default branch, not the
+          # commit that was just built.
           tag_name: RAYNODesk-${{ env.VERSION }}-x86-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
           files: |
             ./SignOutput/RAYNODesk-*.exe
