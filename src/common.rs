@@ -143,6 +143,13 @@ fn apply_client_branding() {
         .write()
         .unwrap()
         .insert("allow-darktheme".to_owned(), "Y".to_owned());
+    // Read by option2bool() in server/connection.rs and by the Sciter Enhancements menu
+    // as get_option("allow-remove-wallpaper"). Untick still persists as "N", since it
+    // differs from this default.
+    config::DEFAULT_SETTINGS.write().unwrap().insert(
+        keys::OPTION_ALLOW_REMOVE_WALLPAPER.to_owned(),
+        "Y".to_owned(),
+    );
 }
 
 pub fn global_init() -> bool {

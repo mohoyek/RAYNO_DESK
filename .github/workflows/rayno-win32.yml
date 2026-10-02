@@ -30,8 +30,6 @@ jobs:
     permissions:
       contents: write
 
-    env:
-      TAG_NAME: "win32"
     steps:
       - name: Export GitHub Actions cache environment variables
         uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
@@ -153,6 +151,8 @@ jobs:
         # signing secret to be usable, only to be free of the SmartScreen warning.
         with:
           prerelease: true
-          tag_name: ${{ env.TAG_NAME }}
+          # New tag per run, so every build gets its own release instead of overwriting
+          # the previous one. The asset name stays stable inside that release.
+          tag_name: RAYNODesk-${{ env.VERSION }}-x86-${{ github.run_number }}
           files: |
             ./SignOutput/RAYNODesk-*.exe
