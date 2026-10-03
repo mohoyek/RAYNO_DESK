@@ -162,6 +162,13 @@ pub fn start(args: &mut [String]) {
         log::error!("Wrong command: {:?}", args);
         return;
     }
+    // The main window only shows ID and password, so it must not be resized or
+    // maximized. Other windows (connection manager, install, remote session) keep
+    // their own resizable frame.
+    #[cfg(windows)]
+    if page == "index.html" {
+        crate::platform::disable_window_resize(frame.get_hwnd() as _);
+    }
     #[cfg(feature = "inline")]
     {
         let html = if page == "index.html" {

@@ -5,8 +5,8 @@ stdout.println("is_xfce: ", is_xfce);
 // See default height in common.tis `msgbox()`.
 const msgbox_default_height = 180;
 // The main window has a fixed size, so popups are sized against it.
-const window_width = 400;
-const window_height = 400;
+const window_width = 300;
+const window_height = 420;
 const incoming_only_width = window_width;
 
 const outgoing_only = handler.is_outgoing_only();
@@ -505,7 +505,7 @@ class MyIdMenu: Reactor.Component {
     function render() {
         return <div #myid>
             {this.renderPop()}
-            {translate('ID')}{svg_menu}
+            {translate('ID')}
         </div>;
     }
 
@@ -550,18 +550,6 @@ class MyIdMenu: Reactor.Component {
                 <li #about>{translate('About')} {" "}{handler.get_app_name()}</li>
             </menu>
         </popup>;
-    }
-
-    event click $(svg#menu) (_, me) {
-        this.showSettingMenu();
-    }
-
-    function showSettingMenu() {
-        audioInputMenu.update({ show: true });
-        this.toggleMenuState();
-        if (direct_server) direct_server.update();
-        var menu = this.$(menu#config-options);
-        this.$(svg#menu).popup(menu);
     }
 
     event click $(li#login) () {
@@ -712,7 +700,7 @@ class App: Reactor.Component
         var is_can_screen_recording = handler.is_can_screen_recording(false);
         return
             <div .app>
-                    <div .left-pane style={incoming_only ? "width:*" : ""}>
+                    <div .left-pane style="width:*">
                     <div>
                         {is_custom_client && handler.get_builtin_option("hide-powered-by-me") != "Y" ? <div .link #powered-by style="opacity:0.5;font-size:0.8em;text-decoration:underline">{translate('powered_by_me')}</div> : ""}
                         <div .title style="flow:horizontal; position:relative; height:1.6em; line-height:1.6em">
@@ -737,20 +725,6 @@ class App: Reactor.Component
                     {!system_error && handler.current_is_wayland() ? <ModifyDefaultLogin /> : ""}
                     {incoming_only ? <ConnectStatus @{this.connect_status} /> : ""}
                 </div>
-                {!incoming_only && <div .right-pane>
-                    <div .right-content>
-                        <div .card-connect>
-                            <div .title>{translate('Control Remote Desktop')}</div>
-                            <ID @{this.remote_id} />
-                            <div .right-buttons>
-                                <button .button .outline #file-transfer>{translate('Transfer file')}</button>
-                                <button .button #connect>{translate('Connect')}</button>
-                            </div>
-                        </div>
-                        <MultipleSessions @{this.multipleSessions} />
-                    </div>
-                    {!outgoing_only ? <ConnectStatus @{this.connect_status} /> : ""}
-                </div>}
                 <div #overlay style="position: absolute;size:*;background:black;opacity:0.5;display:none" />
             </div>; 
     }
@@ -1306,13 +1280,6 @@ function formatId(id) {
 }
 
 event keydown (evt) {
-    if (evt.ctrlKey && evt.altKey && evt.keyCode == Event.VK_S) {
-        if (!disable_settings) {
-            showSettings();
-            return true;
-        }
-        return false;
-    }
     if (view.focus && view.focus.id != 'remote_id') {
         return;
     }
@@ -1352,10 +1319,6 @@ event click $(#powered-by) {
     handler.open_url("https://rustdesk.com");
 }
 
-event click $(#open-settings) (_, me) {
-    showSettings();
-}
-
 // Event handlers for outgoing_only mode (when menu items are in main UI, not in MyIdMenu)
 event click $(li#custom-server) (_, me) {
     if (!outgoing_only) return;
@@ -1390,24 +1353,6 @@ function self.ready() {
     }
     refreshCurrentUser();
     updateTheme();
-}
-
-function showAbout() {
-    myIdMenu.showAbout();
-}
-
-function showSettings() {
-    if ($(#overlay).style#display == 'block') return;
-    var menu = myIdMenu.$(menu#config-options);
-    var anchor = $(#open-settings);
-    if (!anchor) anchor = myIdMenu.$(svg#menu);
-    // show immediately at button, then update menu state asynchronously
-    anchor.popup(menu);
-    self.timer(1ms, function() {
-        audioInputMenu.update({ show: true });
-        myIdMenu.toggleMenuState();
-        if (direct_server) direct_server.update();
-    });
 }
 
 function checkConnectStatus() {
