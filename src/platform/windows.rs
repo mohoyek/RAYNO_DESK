@@ -4296,7 +4296,7 @@ pub fn disable_window_resize(window: HWND) {
         SetWindowLongW(
             window,
             GWL_STYLE,
-            (style & !(WS_THICKFRAME | WS_MAXIMIZEBOX)) as LONG,
+            (style & !(WS_THICKFRAME | WS_MAXIMIZEBOX)) as _,
         );
         SetWindowPos(
             window,
