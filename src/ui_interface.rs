@@ -94,8 +94,8 @@ const INIT_ASYNC_JOB_STATUS: &str = " ";
 const INIT_ASYNC_JOB_STATUS: &str = " ";
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub fn set_sciter_handler(handler: sciter::Value) {
-    *crate::ui_interface::SCITER_HANDLER.lock().unwrap() = Some(handler);
+pub fn set_sciter_handler(window: sciter::Window) {
+    *crate::ui_interface::SCITER_WINDOW.lock().unwrap() = Some(window);
 }
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
@@ -1436,8 +1436,8 @@ async fn check_connect_status_(reconnect: bool, rx: mpsc::UnboundedReceiver<ipc:
                             }
                             Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch })) => {
                                 // Send login request to UI to show incoming request panel
-                                if let Some(h) = crate::ui_interface::SCITER_HANDLER.lock().unwrap().as_ref() {
-                                    h.call(
+                                if let Some(w) = crate::ui_interface::SCITER_WINDOW.lock().unwrap().as_ref() {
+                                    w.call(
                                         "showIncomingRequest",
                                         &make_args!(id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch),
                                     ).ok();
