@@ -1433,7 +1433,7 @@ async fn check_connect_status_(reconnect: bool, rx: mpsc::UnboundedReceiver<ipc:
                                     }
                                 }
                             }
-Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_view_camera, is_terminal, peer_id, name: peer_name, avatar, authorized, port_forward, keyboard, clipboard, audio, file, file_transfer_enabled, restart, recording, block_input, privacy_mode, from_switch })) => {
+Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_terminal, .. })) => {
                                 // Send login request to UI to show incoming request panel
                                 // Temporarily disabled: global window handler disabled
                                 // if let Some(w) = crate::ui_interface::SCITER_WINDOW.lock().unwrap().as_deref() {
