@@ -82,7 +82,6 @@ pub fn start(args: &mut [String]) {
         ALLOW_FILE_IO as u8 | ALLOW_SOCKET_IO as u8 | ALLOW_EVAL as u8 | ALLOW_SYSINFO as u8
     )));
     let mut frame = sciter::WindowBuilder::main_window().create();
-    let frame = std::sync::Arc::new(frame);
     #[cfg(windows)]
     allow_err!(sciter::set_options(sciter::RuntimeOptions::UxTheming(true)));
     frame.set_title(&crate::get_app_name());
@@ -106,7 +105,7 @@ pub fn start(args: &mut [String]) {
         crate::common::check_software_update();
         frame.event_handler(UI {});
         frame.sciter_handler(UIHostHandler {});
-        crate::ui_interface::set_sciter_handler(frame.clone());
+        // crate::ui_interface::set_sciter_handler(frame.clone());
         page = "index.html";
         // Start pulse audio local server.
         #[cfg(target_os = "linux")]
