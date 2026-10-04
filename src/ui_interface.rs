@@ -72,8 +72,8 @@ lazy_static::lazy_static! {
     static ref ASYNC_HTTP_STATUS : Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
     static ref TEMPORARY_PASSWD : Arc<Mutex<String>> = Arc::new(Mutex::new("".to_owned()));
     static ref IS_REMOTE_MODIFY_ENABLED_BY_CONTROL_PERMISSIONS : Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
-    // Global Sciter handler for calling UI functions from async contexts
-    static ref SCITER_HANDLER : Mutex<Option<sciter::Value>> = Mutex::new(None);
+    // Global Sciter window HWND (isize) for calling UI functions from async contexts
+    static ref SCITER_HWND : Mutex<Option<isize>> = Mutex::new(None);
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -95,7 +95,7 @@ const INIT_ASYNC_JOB_STATUS: &str = " ";
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn set_sciter_handler(window: sciter::Window) {
-    *crate::ui_interface::SCITER_WINDOW.lock().unwrap() = Some(window);
+    *crate::ui_interface::SCITER_HWND.lock().unwrap() = Some(window.get_hwnd() as isize);
 }
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
@@ -1436,7 +1436,8 @@ async fn check_connect_status_(reconnect: bool, rx: mpsc::UnboundedReceiver<ipc:
                             }
                             Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch })) => {
                                 // Send login request to UI to show incoming request panel
-                                if let Some(w) = crate::ui_interface::SCITER_WINDOW.lock().unwrap().as_ref() {
+                                if let Some(hwnd) = *crate::ui_interface::SCITER_HWND.lock().unwrap() {
+                                    let w = unsafe { sciter::Window::from_hwnd(hwnd as *mut std::ffi::c_void) };
                                     w.call(
                                         "showIncomingRequest",
                                         &make_args!(id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch),
