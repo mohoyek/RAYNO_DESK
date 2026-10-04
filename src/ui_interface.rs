@@ -29,7 +29,6 @@ use crate::common::SOFTWARE_UPDATE_URL;
 use crate::hbbs_http::account;
 #[cfg(not(any(target_os = "ios")))]
 use crate::ipc;
-use sciter;
 
 type Message = RendezvousMessage;
 
@@ -72,8 +71,6 @@ lazy_static::lazy_static! {
     static ref ASYNC_HTTP_STATUS : Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
     static ref TEMPORARY_PASSWD : Arc<Mutex<String>> = Arc::new(Mutex::new("".to_owned()));
     static ref IS_REMOTE_MODIFY_ENABLED_BY_CONTROL_PERMISSIONS : Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
-    // Global Sciter handler - temporarily disabled due to sciter::Window not being Clone/Send/Sync
-    // static ref SCITER_WINDOW : Arc<Mutex<Option<sciter::Window>>> = Arc::new(Mutex::new(None));
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -90,12 +87,6 @@ lazy_static::lazy_static! {
 }
 
 const INIT_ASYNC_JOB_STATUS: &str = " ";
-
-#[cfg(not(any(target_os = "android", target_os = "ios"))]
-pub fn set_sciter_handler(_window: std::sync::Arc<sciter::Window>) {
-    // Temporarily disabled: sciter::Window doesn't implement Clone/Send/Sync
-    // *crate::ui_interface::SCITER_WINDOW.lock().unwrap() = Some(window);
-}
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
 #[inline]
@@ -1433,17 +1424,22 @@ async fn check_connect_status_(reconnect: bool, rx: mpsc::UnboundedReceiver<ipc:
                                     }
                                 }
                             }
-Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_terminal, .. })) => {
-                                // Send login request to UI to show incoming request panel
-                                // Temporarily disabled: global window handler disabled
-                                // if let Some(w) = crate::ui_interface::SCITER_WINDOW.lock().unwrap().as_deref() {
-                                //     w.call(
-                                //         "showIncomingRequest",
-                                //         &make_args!(id, name, is_file_transfer, is_terminal, false, false, from_switch),
-                                //     ).ok();
-                                // }
-                                log::info!("Incoming connection request: id={}, name={}, from_switch={}", id, name, from_switch);
-                            }
+                            Ok(Some(ipc::Data::Login {
+                            id,
+                            name,
+                            is_file_transfer,
+                            is_terminal,
+                            from_switch,
+                            ..
+                            })) => {
+                            log::info!(
+                            "incoming request: id={}, name={}, file_transfer={}, terminal={}, from_switch={}",
+                            id,
+                            name,
+                            is_file_transfer,
+                            is_terminal,
+                            from_switch
+                            );
                             }
                             _ => {}
                         }
