@@ -433,23 +433,565 @@ textarea.grey-text {
     }
 }
 
-/* Outgoing/desktop ID row. Kept separate from .your-desktop, which PasswordArea shares. */
-.id-box {
-    flow: horizontal;
-    align-items: center;
-    border: color(border) 1px solid;
-    border-radius: 4px;
-    padding: 0.5em;
+/* ===== RAYNO DESK - New Design System ===== */
+
+/* Window & App */
+.app {
+    background: color(bg);
+    color: color(text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-.id-box .id-value {
-    flow: horizontal;
-    align-items: center;
-    width: *;
+html.darktheme .app {
+    background: #252525;
 }
 
-.id-box .id-label {
-    text-align: right;
-    padding-right: 0.3em;
+/* Header */
+header {
+    flow: horizontal;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1em;
+    height: 40px;
+    background: color(bg);
+    border-bottom: color(border) solid 1px;
+    position: relative;
+    z-index: 100;
+}
+
+html.darktheme header {
+    background: #1e1e1e;
+    border-bottom-color: #444;
+}
+
+.header-brand {
+    flow: horizontal;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.header-logo {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    object-fit: cover;
+}
+
+.header-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: color(text);
+}
+
+.header-actions {
+    flow: horizontal;
+    align-items: center;
+    gap: 0.25em;
+}
+
+.header-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    color: color(text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.header-btn:hover {
+    background: color(gray-bg);
+    color: color(text);
+}
+
+.header-btn:active {
+    background: color(border);
+}
+
+#header-close:hover {
+    background: var(--blood-red, #F82600);
+    color: white;
+}
+
+/* Main Content */
+.main-content {
+    padding: 1.5em;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5em;
+}
+
+/* ID Section */
+.id-section {
+    text-align: center;
+}
+
+.id-label {
+    font-size: 0.85em;
+    color: color(lighter-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5em;
+}
+
+.id-value {
+    font-size: 2.5em;
+    font-weight: 700;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    color: color(text);
+    letter-spacing: 0.1em;
+    word-break: break-all;
+}
+
+.id-copy {
+    margin-top: 0.75em;
+    cursor: pointer;
+    opacity: 0.5;
+    transition: opacity 0.15s ease;
+    display: inline-flex;
+}
+
+.id-copy:hover {
+    opacity: 1;
+}
+
+.id-copy svg {
     color: color(light-text);
+}
+
+/* Status Section */
+.status-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+}
+
+.status-lights {
+    display: flex;
+    justify-content: center;
+    gap: 2em;
+    flex-wrap: wrap;
+}
+
+.status-light {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.light-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: color(border);
+    box-shadow: 0 0 0 rgba(0,0,0,0);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.light-dot[data-state="on"] {
+    background: var(--light-green, #5CB85C);
+    box-shadow: 0 0 12px var(--light-green, #5CB85C), 0 0 24px var(--light-green, #5CB85C);
+}
+
+.light-dot[data-state="off"] {
+    background: var(--blood-red, #F82600);
+    box-shadow: 0 0 12px var(--blood-red, #F82600), 0 0 24px var(--blood-red, #F82600);
+}
+
+html.darktheme .light-dot[data-state="on"] {
+    background: var(--light-green, #5CB85C);
+    box-shadow: 0 0 12px var(--light-green, #5CB85C), 0 0 24px var(--light-green, #5CB85C);
+}
+
+html.darktheme .light-dot[data-state="off"] {
+    background: var(--blood-red, #F82600);
+    box-shadow: 0 0 12px var(--blood-red, #F82600), 0 0 24px var(--blood-red, #F82600);
+}
+
+.light-labels {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15em;
+    font-size: 0.7em;
+    white-space: nowrap;
+}
+
+.label-fa {
+    color: color(text);
+    font-weight: 500;
+}
+
+.label-en {
+    color: color(lighter-text);
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.status-text {
+    text-align: center;
+    font-size: 0.9em;
+    color: color(light-text);
+    min-height: 1.5em;
+    transition: color 0.2s ease;
+}
+
+/* Password Area - keep existing styling but ensure dark theme compatibility */
+.your-desktop {
+    border: none;
+    padding: 0;
+}
+
+.your-desktop input[type="text"] {
+    border-radius: 8px;
+    border: color(border) solid 1px;
+    background: color(gray-bg);
+    color: color(text);
+    padding: 0.75em 1em;
+    font-size: 1.1em;
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    text-align: center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+html.darktheme .your-desktop input[type="text"] {
+    background: #1a1a1a;
+    border-color: #444;
+}
+
+.your-desktop input[type="text"]:focus {
+    outline: none;
+    border-color: color(accent);
+    box-shadow: 0 0 0 3px color(accent) alpha(30%);
+}
+
+/* System Error */
+.system-error {
+    padding: 1em;
+    border-radius: 8px;
+    background: color(dark-red) alpha(15%);
+    border: color(dark-red) solid 1px;
+    color: color(dark-red);
+    text-align: center;
+    font-size: 0.9em;
+}
+
+html.darktheme .system-error {
+    background: #A72145 alpha(20%);
+    border-color: #A72145;
+    color: #F82600;
+}
+
+/* Overlay */
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 50;
+    display: none;
+}
+
+.overlay[style*="block"] {
+    display: block;
+}
+
+/* Chat Panel */
+.chat-panel {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background: color(bg);
+    border-right: color(border) solid 1px;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    z-index: 200;
+    animation: slideInLeft 0.25s ease-out;
+}
+
+html.darktheme .chat-panel {
+    background: #1e1e1e;
+    border-right-color: #444;
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.chat-header {
+    flow: horizontal;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75em 1em;
+    border-bottom: color(border) solid 1px;
+}
+
+html.darktheme .chat-header {
+    border-bottom-color: #444;
+}
+
+.chat-title {
+    font-weight: 600;
+    font-size: 0.95em;
+    color: color(text);
+}
+
+.chat-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    color: color(light-text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.chat-close:hover {
+    background: color(gray-bg);
+    color: color(text);
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1em;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75em;
+}
+
+.chat-empty {
+    color: color(lighter-text);
+    text-align: center;
+    margin-top: 2em;
+    font-size: 0.9em;
+}
+
+.chat-input-area {
+    flow: horizontal;
+    padding: 0.75em;
+    border-top: color(border) solid 1px;
+    gap: 0.5em;
+}
+
+html.darktheme .chat-input-area {
+    border-top-color: #444;
+}
+
+.chat-input {
+    flex: 1;
+    padding: 0.5em 0.75em;
+    border: color(border) solid 1px;
+    border-radius: 20px;
+    background: color(gray-bg);
+    color: color(text);
+    font-size: 0.9em;
+    outline: none;
+}
+
+html.darktheme .chat-input {
+    background: #1a1a1a;
+    border-color: #444;
+    color: white;
+}
+
+.chat-input:focus {
+    outline: none;
+    border-color: color(accent);
+}
+
+.chat-send {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: color(accent);
+    color: color(bg);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.chat-send:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px color(accent) alpha(40%);
+}
+
+.chat-send:active {
+    transform: scale(0.95);
+}
+
+/* Incoming Request Panel */
+.incoming-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: color(bg);
+    border: color(border) solid 1px;
+    border-radius: 16px;
+    padding: 2em;
+    min-width: 320px;
+    max-width: 90vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    z-index: 300;
+    animation: scaleIn 0.2s ease-out;
+}
+
+html.darktheme .incoming-panel {
+    background: #252525;
+    border-color: #555;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: translate(-50%, -50%) scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+.incoming-header {
+    text-align: center;
+    margin-bottom: 1.5em;
+}
+
+.incoming-title {
+    font-size: 1.2em;
+    font-weight: 600;
+    color: color(text);
+}
+
+.incoming-info {
+    text-align: center;
+    margin-bottom: 1.5em;
+    padding: 1em;
+    background: color(gray-bg);
+    border-radius: 8px;
+}
+
+html.darktheme .incoming-info {
+    background: #1a1a1a;
+}
+
+.incoming-label {
+    display: block;
+    font-size: 0.85em;
+    color: color(lighter-text);
+    margin-bottom: 0.25em;
+}
+
+.incoming-id {
+    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 1.1em;
+    font-weight: 600;
+    color: color(text);
+    letter-spacing: 0.05em;
+}
+
+.incoming-actions {
+    display: flex;
+    gap: 0.75em;
+    justify-content: center;
+}
+
+.incoming-actions button {
+    padding: 0.75em 1.5em;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    min-width: 120px;
+}
+
+.btn-accept {
+    background: var(--light-green, #5CB85C);
+    color: white;
+}
+
+.btn-accept:hover {
+    box-shadow: 0 4px 16px var(--light-green, #5CB85C) alpha(40%);
+    transform: translateY(-1px);
+}
+
+.btn-reject {
+    background: var(--blood-red, #F82600);
+    color: white;
+}
+
+.btn-reject:hover {
+    box-shadow: 0 4px 16px var(--blood-red, #F82600) alpha(40%);
+    transform: translateY(-1px);
+}
+
+.incoming-actions button:active {
+    transform: scale(0.98);
+}
+
+/* Connect Status (keep existing) */
+.connect-status {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75em;
+    text-align: center;
+    font-size: 0.85em;
+    background: color(gray-bg);
+    border-top: color(border) solid 1px;
+}
+
+html.darktheme .connect-status {
+    background: #1a1a1a;
+}
+
+/* ID Box (removed - replaced by new design) */
+
+/* Responsive */
+@media (max-width: 360px) {
+    .status-lights {
+        gap: 1em;
+    }
+    
+    .light-dot {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .label-fa, .label-en {
+        font-size: 0.65em;
+    }
+    
+    .chat-panel {
+        width: 100%;
+    }
 }
