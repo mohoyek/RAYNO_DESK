@@ -349,6 +349,7 @@ impl UI {
                 if let Some(v) = v.as_string() {
                     if !v.is_empty() {
                         m.insert(k, v);
+                    }
                 }
             }
         }
@@ -740,7 +741,6 @@ impl UI {
     pub fn get_session_active(&self) -> bool {
         crate::ui_cm_interface::get_clients_length() > 0
     }
-
 }
 
 impl sciter::EventHandler for UI {
