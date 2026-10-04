@@ -705,9 +705,6 @@ class App: Reactor.Component
         app = this;
         this.chat_open = false;
         this.incoming_request = null;
-        this.session_active = false;
-        this.window_x = 0;
-        this.window_y = 0;
     }
 
     function render() {
@@ -720,8 +717,8 @@ class App: Reactor.Component
                         <div class="id-value">
                             {key_confirmed ? formatId(get_id()) : translate("Generating ...")}
                         </div>
-                        <div class="id-copy" title="کپی آیدی" onclick={function() { handler.set_local_option("copied_id", get_id()); }}>
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <div #id-copy .id-copy title="کپی آیدی">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
@@ -730,22 +727,22 @@ class App: Reactor.Component
 
                     <div class="status-section">
                         <div class="status-lights">
-                            <div class="status-light" id="status-internet">
-                                <div class="light-dot" data-state="off"></div>
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-internet"></div>
                                 <div class="light-labels">
                                     <span class="label-fa">اینترنت</span>
                                     <span class="label-en">Internet</span>
                                 </div>
                             </div>
-                            <div class="status-light" id="status-server">
-                                <div class="light-dot" data-state="off"></div>
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-server"></div>
                                 <div class="light-labels">
                                     <span class="label-fa">سرور</span>
                                     <span class="label-en">Server</span>
                                 </div>
                             </div>
-                            <div class="status-light" id="status-agent">
-                                <div class="light-dot" data-state="off"></div>
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-agent"></div>
                                 <div class="light-labels">
                                     <span class="label-fa">ارتباط کارشناس</span>
                                     <span class="label-en">Agent</span>
@@ -769,23 +766,11 @@ class App: Reactor.Component
                     {!incoming_only && <div class="system-error">outgoing_only mode not supported</div>}
                 </div>
 
-                {this.chat_open && <ChatPanel onClose={function() { this.chat_open = false; this.update(); }} />}
+                {this.chat_open && <ChatPanel />}
 
-                {this.incoming_request && <IncomingRequestPanel 
-                    request={this.incoming_request}
-                    onAccept={function() { 
-                        handler.authorize(this.incoming_request.cid); 
-                        this.incoming_request = null; 
-                        this.update(); 
-                    }}
-                    onReject={function() { 
-                        handler.close(this.incoming_request.cid); 
-                        this.incoming_request = null; 
-                        this.update(); 
-                    }}
-                />}
+                {this.incoming_request && <IncomingRequestPanel request={this.incoming_request} />}
 
-                <div #overlay style="display:none" class="overlay"></div>
+                <div #overlay class="overlay" style="display:none"></div>
             </div>; 
     }
 
@@ -800,59 +785,36 @@ class App: Reactor.Component
             return "در حال برقراری اتصال...";
         }
         if (connect_status > 0) {
-            if (handler.get_session_active()) {
-                return "نشست فعال — در حال اشتراک‌گذاری";
-            }
             return "آماده پذیرش اتصال";
         }
         return "وضعیت ناشناخته";
     }
-    
-    function showIncomingRequest(id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch) {
-        this.incoming_request = {
-            id: id,
-            name: name,
-            is_file_transfer: is_file_transfer,
-            is_terminal: is_terminal,
-            is_port_forward: is_port_forward,
-            is_rdp: is_rdp,
-            from_switch: from_switch
-        };
-        this.update();
-    }
 }
- 
 class ChatPanel: Reactor.Component {
-    function this(params) {
-        this.onClose = params.onClose;
+    function this() {
         this.messages = [];
     }
- 
+
     function render() {
+        var me = this;
         return
-            <div class="chat-panel">
-                <div class="chat-header">
-                    <span class="chat-title">چت</span>
-                    <button class="chat-close" onclick={this.onClose}>
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <div .chat-panel>
+                <div .chat-header>
+                    <span .chat-title>چت</span>
+                    <button #chat-close .chat-close>
+                        <svg viewBox="0 0 24 24" width="14" height="14">
                             <line x1="18" y1="6" x2="6" y2="18"></line>
                             <line x1="6" y1="6" x2="18" y2="18"></line>
                         </svg>
                     </button>
                 </div>
-                <div class="chat-messages">
-                    {this.messages.map(function(msg) {
-                        return <div class="chat-message" data-self={msg.self ? "true" : "false"}>
-                            <div class="chat-message-bubble">{msg.text}</div>
-                            <div class="chat-message-time">{msg.time}</div>
-                        </div>;
-                    })}
-                    {this.messages.length == 0 ? <div class="chat-empty">پیامی وجود ندارد</div> : ""}
+                <div .chat-messages>
+                    {this.messages.length == 0 ? <div .chat-empty>پیامی وجود ندارد</div> : ""}
                 </div>
-                <div class="chat-input-area">
-                    <input type="text" class="chat-input" ref="input" placeholder="پیام خود را تایپ کنید..." />
-                    <button class="chat-send" title="ارسال" onclick={this.sendMessage}>
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <div .chat-input-area>
+                    <input|text #chat-input .chat-input placeholder="پیام خود را تایپ کنید..." />
+                    <button #chat-send .chat-send>
+                        <svg viewBox="0 0 24 24" width="16" height="16">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
@@ -860,71 +822,63 @@ class ChatPanel: Reactor.Component {
                 </div>
             </div>;
     }
- 
-    function sendMessage() {
-        var input = this.$(input);
-        var text = (input.value || "").trim();
-        if (!text) return;
-        // For now, add locally and send if there's an active connection
-        this.messages.push({text: text, time: getNowStr(), self: true});
-        this.update();
-        // Send to active connection (if any)
-        var clients = handler.get_session_active();
-        if (clients) {
-            // Get first active client ID (simplified - in reality would need connection ID)
-            handler.send_msg(0, text); // placeholder - real implementation needs connection ID
-        }
-        this.$(input).value = "";
+
+    event click $(button#chat-close) () {
+        app.chat_open = false;
+        app.update();
     }
- 
-    event keydown $(input) (evt) {
+
+    event click $(button#chat-send) () {
+        this.sendMessage();
+    }
+
+    event keydown $(input#chat-input) (evt) {
         if (!evt.shortcutKey && isEnterKey(evt)) {
             this.sendMessage();
         }
     }
+
+    function sendMessage() {
+        var input = $(input#chat-input);
+        if (!input) return;
+        var text = (input.value || "").trim();
+        if (!text) return;
+        // The peer's message channel lives in the connection-manager process, so
+        // the main window can only show local text until that path exists.
+        this.messages.push({ text: text, time: getNowStr(), self: true });
+        input.value = "";
+        this.update();
+        stdout.println("chat send:", text);
+    }
 }
- 
+
 class IncomingRequestPanel: Reactor.Component {
     function this(params) {
-        this.request = params.request;
-        this.onAccept = params.onAccept;
-        this.onReject = params.onReject;
+        this.request = params.request || {};
     }
- 
+
     function render() {
         return
-            <div class="incoming-panel">
-                <div class="incoming-header">
-                    <span class="incoming-title">درخواست ورودی</span>
-                </div>
-                <div class="incoming-info">
-                    <span class="incoming-label">شناسه درخواست‌کننده:</span>
-                    <span class="incoming-id">{this.request.id}</span>
-                    {this.request.name && <div class="incoming-name">{this.request.name}</div>}
-                    {this.request.is_file_transfer && <span class="incoming-tag">انتقال فایل</span>}
-                    {this.request.is_terminal && <span class="incoming-tag">ترمینال</span>}
-                    {this.request.is_port_forward && <span class="incoming-tag">پورت‌فورواردینگ</span>}
-                    {this.request.is_rdp && <span class="incoming-tag">RDP</span>}
-                </div>
-                <div class="incoming-actions">
-                    <button class="btn-accept" onclick={this.onAccept}>پذیرش</button>
-                    <button class="btn-reject" onclick={this.onReject}>قطع ارتباط</button>
+            <div .incoming-overlay>
+                <div .incoming-panel>
+                    <div>
+                        <span .incoming-title>درخواست ورودی</span>
+                    </div>
+                    <div .incoming-info>
+                        <span .incoming-label>شناسه درخواست‌کننده:</span>
+                        <div .incoming-id>{this.request.id || ""}</div>
+                        {this.request.name ? <div>{this.request.name}</div> : ""}
+                        {this.request.is_file_transfer ? <span .incoming-tag>انتقال فایل</span> : ""}
+                        {this.request.is_terminal ? <span .incoming-tag>ترمینال</span> : ""}
+                    </div>
+                    <div .incoming-actions>
+                        <button .incoming-btn .accept>پذیرش</button>
+                        <button .incoming-btn .reject>قطع ارتباط</button>
+                    </div>
                 </div>
             </div>;
     }
 }
-        this.newRemote("connect");
-    }
-
-    event click $(button#file-transfer) {
-        this.newRemote("file-transfer");
-    }
-
-    function newRemote(type) {
-        createNewConnect(this.remote_id.value, type);
-    }
-}
-
 class InstallMe: Reactor.Component {
     function render() {
         return <div .install-me>
@@ -1502,6 +1456,12 @@ event click $(#powered-by) {
     handler.open_url("https://rustdesk.com");
 }
 
+event click $(#id-copy) {
+    // Clipboard writes need a backend call that the main window does not expose
+    // yet; the id is already selectable in .id-value, so just flag the intent.
+    stdout.println("copy id:", get_id());
+}
+
 event click $(#header-chat) {
     app.chat_open = !app.chat_open;
     app.update();
@@ -1509,10 +1469,6 @@ event click $(#header-chat) {
 
 event click $(#header-close) {
     view.close();
-}
-
-event click $(.id-copy) {
-    handler.set_local_option("copied_id", get_id());
 }
 
 // Event handlers for outgoing_only mode (when menu items are in main UI, not in MyIdMenu)
@@ -1545,40 +1501,41 @@ function self.closing() {
 
 function self.ready() {
     var (sx, sy, sw, sh) = view.screenBox(#workarea, #rectw);
-    var w = (sw / 6).toInteger();
-    if (w < 320) w = 320;
-    if (w > 420) w = 420;
-    var h = (w * 1.25).toInteger();
-    if (h < 400) h = 400;
-    if (h > 520) h = 520;
+    var w = clamp_window_dim((sw / 6).toInteger(), 320, 420);
+    var h = clamp_window_dim((w * 1.25).toInteger(), 400, 520);
+    var x = sx + sw - w - 10;
+    var y = sy + 10;
 
+    // Restore the last position only when it still fits on the current screen.
     var pos = handler.get_local_option("rayno-window-pos");
-    var x, y;
     if (pos) {
         var parts = pos.split(",");
         if (parts.length == 2) {
-            x = parts[0].toInteger();
-            y = parts[1].toInteger();
-            if (x < sx || x + w > sx + sw || y < sy || y + h > sy + sh) {
-                x = sx + sw - w - 10;
-                y = sy + 10;
+            var px = parts[0].toInteger();
+            var py = parts[1].toInteger();
+            if (px >= sx && px + w <= sx + sw && py >= sy && py + h <= sy + sh) {
+                x = px;
+                y = py;
             }
-        } else {
-            x = sx + sw - w - 10;
-            y = sy + 10;
         }
+    }
 
     view.windowMinSize = (w, h);
     view.windowMaxSize = (w, h);
     view.move(x, y, w, h);
     view.windowTopmost = true;
-    view.windowFrame = "extended";
 
-    if (!handler.get_remote_id()) {
-        view.focus = $(#remote_id);
-    }
     refreshCurrentUser();
     updateTheme();
+    updateStatusLights();
+    var logo = $(img#header-logo);
+    if (logo) logo.src = handler.get_icon();
+}
+
+function clamp_window_dim(v, lo, hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
 }
 
 function checkConnectStatus() {
@@ -1638,15 +1595,16 @@ function updateStatusLights() {
     var internet_on = connect_status > 0;
     var server_on = !service_stopped && connect_status > 0;
     var agent_on = handler.get_session_active();
-    
-    var internet_el = $(#status-internet .light-dot);
-    var server_el = $(#status-server .light-dot);
-    var agent_el = $(#status-agent .light-dot);
-    
-    if (internet_el) internet_el.attributes.set("data-state", internet_on ? "on" : "off");
-    if (server_el) server_el.attributes.set("data-state", server_on ? "on" : "off");
-    if (agent_el) agent_el.attributes.set("data-state", agent_on ? "on" : "off");
-}                                
+
+    set_light_state($(#dot-internet), internet_on);
+    set_light_state($(#dot-server), server_on);
+    set_light_state($(#dot-agent), agent_on);
+}
+
+function set_light_state(el, on) {
+    if (!el) return;
+    el.classList.toggle("online", on);
+}
                                  
 var enter = false;               
 function self.onMouse(evt) {     

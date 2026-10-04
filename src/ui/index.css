@@ -433,99 +433,106 @@ textarea.grey-text {
     }
 }
 
-/* ===== RAYNO DESK - New Design System ===== */
+/* ===== RAYNO Desk - design system (Sciter-native CSS) =====
+   Sciter has no flexbox, no @keyframes/transition, no position:fixed and no
+   CSS var() fallbacks. Layout uses flow:/border-spacing/size/margin, spacing
+   uses border-spacing, centering uses \*\ margins, and animation is left to
+   :hover states only. */
 
-/* Window & App */
 .app {
     background: color(bg);
     color: color(text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    size: *;
 }
 
-html.darktheme .app {
-    background: #252525;
+.main-content {
+    flow: vertical;
+    padding: 1.4em;
+    border-spacing: 1.1em;
 }
 
-/* Header */
+/* ---------- header (also the window drag handle) ---------- */
+
 header {
     flow: horizontal;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 1em;
-    height: 40px;
-    background: color(bg);
+    vertical-align: middle;
+    border-spacing: 0.6em;
+    height: 44px;
+    padding: 0 0.8em;
+    background: color(gray-bg);
     border-bottom: color(border) solid 1px;
-    position: relative;
-    z-index: 100;
 }
 
-html.darktheme header {
-    background: #1e1e1e;
-    border-bottom-color: #444;
+header .window-icon {
+    size: 24px;
 }
 
 .header-brand {
     flow: horizontal;
-    align-items: center;
-    gap: 0.5em;
+    vertical-align: middle;
+    border-spacing: 0.5em;
 }
 
 .header-logo {
-    width: 28px;
-    height: 28px;
+    size: 26px;
     border-radius: 6px;
-    object-fit: cover;
+    background-size: cover;
+    background-repeat: no-repeat;
 }
 
 .header-title {
     font-size: 1.1em;
-    font-weight: 600;
+    font-weight: bold;
     color: color(text);
+}
+
+/* absorbs the free space so the chat/close buttons sit at the right edge */
+.header-spacer {
+    width: *;
 }
 
 .header-actions {
     flow: horizontal;
-    align-items: center;
-    gap: 0.25em;
+    vertical-align: middle;
+    border-spacing: 0.3em;
 }
 
 .header-btn {
-    width: 32px;
-    height: 32px;
+    size: 30px;
     border: none;
-    background: transparent;
+    background: none;
     border-radius: 6px;
-    color: color(text);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s ease, color 0.15s ease;
+    padding: 0;
 }
 
 .header-btn:hover {
-    background: color(gray-bg);
-    color: color(text);
+    background: color(menu-hover);
 }
 
 .header-btn:active {
     background: color(border);
 }
 
-#header-close:hover {
-    background: var(--blood-red, #F82600);
+.header-btn svg {
+    size: 18px;
+    background: none;
+    color: color(light-text);
+}
+
+.header-btn:hover svg {
+    color: color(text);
+}
+
+.header-btn#header-close:hover {
+    background: color(blood-red);
+}
+
+.header-btn#header-close:hover svg {
     color: white;
 }
 
-/* Main Content */
-.main-content {
-    padding: 1.5em;
-    display: flex;
-    flex-direction: column;
-    gap: 1.5em;
-}
+/* ---------- big ID ---------- */
 
-/* ID Section */
 .id-section {
     text-align: center;
 }
@@ -533,26 +540,19 @@ html.darktheme header {
 .id-label {
     font-size: 0.85em;
     color: color(lighter-text);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 0.5em;
 }
 
 .id-value {
-    font-size: 2.5em;
-    font-weight: 700;
-    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+    font-size: 2.2em;
+    font-weight: bold;
     color: color(text);
-    letter-spacing: 0.1em;
-    word-break: break-all;
+    margin: 0.25em 0;
 }
 
 .id-copy {
-    margin-top: 0.75em;
-    cursor: pointer;
+    display: inline-block;
+    padding: 0.2em;
     opacity: 0.5;
-    transition: opacity 0.15s ease;
-    display: inline-flex;
 }
 
 .id-copy:hover {
@@ -560,438 +560,308 @@ html.darktheme header {
 }
 
 .id-copy svg {
+    size: 16px;
+    background: none;
     color: color(light-text);
 }
 
-/* Status Section */
+/* ---------- status lights ---------- */
+
 .status-section {
-    display: flex;
-    flex-direction: column;
-    gap: 1em;
+    flow: vertical;
+    border-spacing: 0.8em;
 }
 
 .status-lights {
-    display: flex;
-    justify-content: center;
-    gap: 2em;
-    flex-wrap: wrap;
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.8em;
+}
+
+/* split the free space on both sides so the row of lights is centred */
+.status-light:first-child {
+    margin-left: *;
+}
+
+.status-light:last-child {
+    margin-right: *;
 }
 
 .status-light {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5em;
+    flow: vertical;
+    vertical-align: middle;
+    border-spacing: 0.35em;
 }
 
 .light-dot {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: color(border);
-    box-shadow: 0 0 0 rgba(0,0,0,0);
-    transition: background 0.2s ease, box-shadow 0.2s ease;
+    size: 18px;
+    border-radius: 9px;
+    background: color(blood-red);
 }
 
-.light-dot[data-state="on"] {
-    background: var(--light-green, #5CB85C);
-    box-shadow: 0 0 12px var(--light-green, #5CB85C), 0 0 24px var(--light-green, #5CB85C);
+.light-dot.online {
+    background: color(dark-green);
 }
 
-.light-dot[data-state="off"] {
-    background: var(--blood-red, #F82600);
-    box-shadow: 0 0 12px var(--blood-red, #F82600), 0 0 24px var(--blood-red, #F82600);
+html.darktheme .light-dot {
+    background: color(blood-red);
 }
 
-html.darktheme .light-dot[data-state="on"] {
-    background: var(--light-green, #5CB85C);
-    box-shadow: 0 0 12px var(--light-green, #5CB85C), 0 0 24px var(--light-green, #5CB85C);
-}
-
-html.darktheme .light-dot[data-state="off"] {
-    background: var(--blood-red, #F82600);
-    box-shadow: 0 0 12px var(--blood-red, #F82600), 0 0 24px var(--blood-red, #F82600);
+html.darktheme .light-dot.online {
+    background: color(dark-green);
 }
 
 .light-labels {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.15em;
-    font-size: 0.7em;
-    white-space: nowrap;
+    flow: vertical;
+    vertical-align: middle;
+    border-spacing: 0;
+    width: *;
 }
 
 .label-fa {
     color: color(text);
-    font-weight: 500;
 }
 
 .label-en {
+    font-size: 0.8em;
     color: color(lighter-text);
-    font-size: 0.85em;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
 }
 
 .status-text {
     text-align: center;
-    font-size: 0.9em;
     color: color(light-text);
-    min-height: 1.5em;
-    transition: color 0.2s ease;
-}
-
-/* Password Area - keep existing styling but ensure dark theme compatibility */
-.your-desktop {
-    border: none;
-    padding: 0;
-}
-
-.your-desktop input[type="text"] {
-    border-radius: 8px;
-    border: color(border) solid 1px;
-    background: color(gray-bg);
-    color: color(text);
-    padding: 0.75em 1em;
-    font-size: 1.1em;
-    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
-    text-align: center;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-html.darktheme .your-desktop input[type="text"] {
-    background: #1a1a1a;
-    border-color: #444;
-}
-
-.your-desktop input[type="text"]:focus {
-    outline: none;
-    border-color: color(accent);
-    box-shadow: 0 0 0 3px color(accent) alpha(30%);
-}
-
-/* System Error */
-.system-error {
-    padding: 1em;
-    border-radius: 8px;
-    background: color(dark-red) alpha(15%);
-    border: color(dark-red) solid 1px;
-    color: color(dark-red);
-    text-align: center;
     font-size: 0.9em;
 }
 
-html.darktheme .system-error {
-    background: #A72145 alpha(20%);
-    border-color: #A72145;
-    color: #F82600;
+/* ---------- password ---------- */
+
+.main-content div.your-desktop {
+    flow: vertical;
+    border-spacing: 0.6em;
+    padding: 0;
+    border: none;
 }
 
-/* Overlay */
-.overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 50;
-    display: none;
+.main-content div.password {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.5em;
 }
 
-.overlay[style*="block"] {
-    display: block;
+.main-content div.password input {
+    font-size: 1.1em;
+    text-align: center;
+    border-radius: 6px;
+    border: color(border) solid 1px;
+    background: color(bg);
+    color: color(text);
+    padding: 0.5em;
+    width: *;
 }
 
-/* Chat Panel */
+.main-content div.password svg {
+    padding: 0.3em;
+    color: color(light-text);
+    background: none;
+}
+
+.main-content div.password svg:hover {
+    color: color(text);
+}
+
+/* ---------- chat panel (slides in from the left edge) ---------- */
+
 .chat-panel {
     position: absolute;
-    top: 40px;
     left: 0;
+    top: 44px;
     bottom: 0;
-    width: 280px;
+    width: 260px;
     background: color(bg);
     border-right: color(border) solid 1px;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
-    display: flex;
-    flex-direction: column;
-    z-index: 200;
-    animation: slideInLeft 0.25s ease-out;
-}
-
-html.darktheme .chat-panel {
-    background: #1e1e1e;
-    border-right-color: #444;
-}
-
-@keyframes slideInLeft {
-    from {
-        transform: translateX(-100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+    flow: vertical;
 }
 
 .chat-header {
     flow: horizontal;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75em 1em;
+    vertical-align: middle;
+    border-spacing: 0.5em;
+    padding: 0.7em;
     border-bottom: color(border) solid 1px;
 }
 
-html.darktheme .chat-header {
-    border-bottom-color: #444;
-}
-
 .chat-title {
-    font-weight: 600;
     font-size: 0.95em;
+    font-weight: bold;
     color: color(text);
 }
 
 .chat-close {
-    width: 28px;
-    height: 28px;
+    margin-left: *;
+    size: 26px;
     border: none;
-    background: transparent;
+    background: none;
     border-radius: 6px;
-    color: color(light-text);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s ease, color 0.15s ease;
+    padding: 0;
 }
 
 .chat-close:hover {
     background: color(gray-bg);
-    color: color(text);
+}
+
+.chat-close svg {
+    size: 14px;
+    background: none;
+    color: color(light-text);
 }
 
 .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 1em;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75em;
+    width: *;
+    padding: 0.8em;
+    overflow-y: scroll-indicator;
+    border-spacing: 0.6em;
 }
 
 .chat-empty {
-    color: color(lighter-text);
     text-align: center;
-    margin-top: 2em;
+    color: color(lighter-text);
     font-size: 0.9em;
+    padding: 1.5em 0;
 }
 
 .chat-input-area {
     flow: horizontal;
-    padding: 0.75em;
+    vertical-align: middle;
+    border-spacing: 0.5em;
+    padding: 0.6em;
     border-top: color(border) solid 1px;
-    gap: 0.5em;
-}
-
-html.darktheme .chat-input-area {
-    border-top-color: #444;
 }
 
 .chat-input {
-    flex: 1;
-    padding: 0.5em 0.75em;
+    width: *;
+    border-radius: 14px;
     border: color(border) solid 1px;
-    border-radius: 20px;
     background: color(gray-bg);
     color: color(text);
+    padding: 0.4em 0.7em;
     font-size: 0.9em;
-    outline: none;
-}
-
-html.darktheme .chat-input {
-    background: #1a1a1a;
-    border-color: #444;
-    color: white;
-}
-
-.chat-input:focus {
-    outline: none;
-    border-color: color(accent);
 }
 
 .chat-send {
-    width: 36px;
-    height: 36px;
+    size: 32px;
     border: none;
+    border-radius: 16px;
     background: color(accent);
-    color: color(bg);
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    padding: 0;
 }
 
 .chat-send:hover {
-    transform: scale(1.05);
-    box-shadow: 0 4px 12px color(accent) alpha(40%);
+    background: color(button);
 }
 
-.chat-send:active {
-    transform: scale(0.95);
+.chat-send svg {
+    size: 16px;
+    background: none;
+    color: color(bg);
 }
 
-/* Incoming Request Panel */
+/* ---------- incoming request panel ---------- */
+
+.incoming-overlay {
+    position: absolute;
+    size: *;
+    flow: horizontal;
+    background: rgb(0, 0, 0);
+    opacity: 0.55;
+}
+
 .incoming-panel {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    margin: *;
+    flow: vertical;
+    border-spacing: 1em;
+    padding: 1.4em;
+    width: 280px;
     background: color(bg);
     border: color(border) solid 1px;
-    border-radius: 16px;
-    padding: 2em;
-    min-width: 320px;
-    max-width: 90vw;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    z-index: 300;
-    animation: scaleIn 0.2s ease-out;
-}
-
-html.darktheme .incoming-panel {
-    background: #252525;
-    border-color: #555;
-}
-
-@keyframes scaleIn {
-    from {
-        transform: translate(-50%, -50%) scale(0.9);
-        opacity: 0;
-    }
-    to {
-        transform: translate(-50%, -50%) scale(1);
-        opacity: 1;
-    }
-}
-
-.incoming-header {
-    text-align: center;
-    margin-bottom: 1.5em;
+    border-radius: 12px;
 }
 
 .incoming-title {
-    font-size: 1.2em;
-    font-weight: 600;
+    font-size: 1.1em;
+    font-weight: bold;
     color: color(text);
 }
 
 .incoming-info {
-    text-align: center;
-    margin-bottom: 1.5em;
-    padding: 1em;
-    background: color(gray-bg);
+    flow: vertical;
+    border-spacing: 0.3em;
+    padding: 0.8em;
     border-radius: 8px;
-}
-
-html.darktheme .incoming-info {
-    background: #1a1a1a;
+    background: color(gray-bg);
 }
 
 .incoming-label {
-    display: block;
     font-size: 0.85em;
     color: color(lighter-text);
-    margin-bottom: 0.25em;
 }
 
 .incoming-id {
-    font-family: "SF Mono", "Fira Code", "Consolas", monospace;
-    font-size: 1.1em;
-    font-weight: 600;
+    font-size: 1.15em;
+    font-weight: bold;
     color: color(text);
-    letter-spacing: 0.05em;
+}
+
+.incoming-tag {
+    color: color(accent);
+    font-size: 0.85em;
 }
 
 .incoming-actions {
-    display: flex;
-    gap: 0.75em;
-    justify-content: center;
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.6em;
 }
 
-.incoming-actions button {
-    padding: 0.75em 1.5em;
+.incoming-btn {
+    width: *;
+    height: 2.2em;
     border: none;
     border-radius: 8px;
-    font-size: 0.95em;
-    font-weight: 600;
-    cursor: pointer;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-    min-width: 120px;
+    font-weight: bold;
 }
 
-.btn-accept {
-    background: var(--light-green, #5CB85C);
+.incoming-btn.accept {
+    background: color(dark-green);
     color: white;
 }
 
-.btn-accept:hover {
-    box-shadow: 0 4px 16px var(--light-green, #5CB85C) alpha(40%);
-    transform: translateY(-1px);
+.incoming-btn.accept:hover {
+    opacity: 0.85;
 }
 
-.btn-reject {
-    background: var(--blood-red, #F82600);
+.incoming-btn.reject {
+    background: color(blood-red);
     color: white;
 }
 
-.btn-reject:hover {
-    box-shadow: 0 4px 16px var(--blood-red, #F82600) alpha(40%);
-    transform: translateY(-1px);
+.incoming-btn.reject:hover {
+    opacity: 0.85;
 }
 
-.incoming-actions button:active {
-    transform: scale(0.98);
-}
+/* ---------- misc ---------- */
 
-/* Connect Status (keep existing) */
-.connect-status {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 0.75em;
-    text-align: center;
-    font-size: 0.85em;
+.system-error {
+    padding: 0.8em;
+    border-radius: 8px;
     background: color(gray-bg);
-    border-top: color(border) solid 1px;
+    border: color(blood-red) solid 1px;
+    color: color(blood-red);
+    text-align: center;
 }
 
-html.darktheme .connect-status {
-    background: #1a1a1a;
-}
-
-/* ID Box (removed - replaced by new design) */
-
-/* Responsive */
-@media (max-width: 360px) {
-    .status-lights {
-        gap: 1em;
-    }
-    
-    .light-dot {
-        width: 16px;
-        height: 16px;
-    }
-    
-    .label-fa, .label-en {
-        font-size: 0.65em;
-    }
-    
-    .chat-panel {
-        width: 100%;
-    }
+.overlay {
+    position: absolute;
+    size: *;
+    background: rgb(0, 0, 0);
+    opacity: 0.5;
 }
