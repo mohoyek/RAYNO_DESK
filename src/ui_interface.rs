@@ -73,7 +73,7 @@ lazy_static::lazy_static! {
     static ref TEMPORARY_PASSWD : Arc<Mutex<String>> = Arc::new(Mutex::new("".to_owned()));
     static ref IS_REMOTE_MODIFY_ENABLED_BY_CONTROL_PERMISSIONS : Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
     // Global Sciter handler for calling UI functions from async contexts
-    static ref SCITER_HANDLER : std::sync::OnceLock<sciter::Value> = std::sync::OnceLock::new();
+    static ref SCITER_HANDLER : Mutex<Option<sciter::Value>> = Mutex::new(None);
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -95,7 +95,7 @@ const INIT_ASYNC_JOB_STATUS: &str = " ";
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn set_sciter_handler(handler: sciter::Value) {
-    crate::ui_interface::SCITER_HANDLER.set(handler).ok();
+    *crate::ui_interface::SCITER_HANDLER.lock().unwrap() = Some(handler);
 }
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
@@ -1436,7 +1436,7 @@ async fn check_connect_status_(reconnect: bool, rx: mpsc::UnboundedReceiver<ipc:
                             }
                             Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch })) => {
                                 // Send login request to UI to show incoming request panel
-                                if let Some(h) = crate::SCITER_HANDLER.get() {
+                                if let Some(h) = crate::ui_interface::SCITER_HANDLER.lock().unwrap().as_ref() {
                                     h.call(
                                         "showIncomingRequest",
                                         &make_args!(id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch),
