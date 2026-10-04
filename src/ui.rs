@@ -82,6 +82,7 @@ pub fn start(args: &mut [String]) {
         ALLOW_FILE_IO as u8 | ALLOW_SOCKET_IO as u8 | ALLOW_EVAL as u8 | ALLOW_SYSINFO as u8
     )));
     let mut frame = sciter::WindowBuilder::main_window().create();
+    let frame = std::sync::Arc::new(frame);
     #[cfg(windows)]
     allow_err!(sciter::set_options(sciter::RuntimeOptions::UxTheming(true)));
     frame.set_title(&crate::get_app_name());
@@ -349,22 +350,6 @@ impl UI {
                 if let Some(v) = v.as_string() {
                     if !v.is_empty() {
                         m.insert(k, v);
-pub fn authorize(&self, id: i32) {
-        crate::ui_cm_interface::authorize(id);
-    }
-
-    pub fn close_connection(&self, id: i32) {
-        crate::ui_cm_interface::close(id);
-    }
-
-    pub fn send_msg(&self, id: i32, text: String) {
-        crate::ui_cm_interface::send_chat(id, text);
-    }
-
-    pub fn get_session_active(&self) -> bool {
-        crate::ui_cm_interface::get_clients_length() > 0
-    }
-}
                 }
             }
         }
@@ -740,6 +725,23 @@ pub fn authorize(&self, id: i32) {
         }
         .to_string()
     }
+
+    pub fn authorize(&self, id: i32) {
+        crate::ui_cm_interface::authorize(id);
+    }
+
+    pub fn close_connection(&self, id: i32) {
+        crate::ui_cm_interface::close(id);
+    }
+
+    pub fn send_msg(&self, id: i32, text: String) {
+        crate::ui_cm_interface::send_chat(id, text);
+    }
+
+    pub fn get_session_active(&self) -> bool {
+        crate::ui_cm_interface::get_clients_length() > 0
+    }
+
 }
 
 impl sciter::EventHandler for UI {

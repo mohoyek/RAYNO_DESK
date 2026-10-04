@@ -72,8 +72,8 @@ lazy_static::lazy_static! {
     static ref ASYNC_HTTP_STATUS : Arc<Mutex<HashMap<String, String>>> = Arc::new(Mutex::new(HashMap::new()));
     static ref TEMPORARY_PASSWD : Arc<Mutex<String>> = Arc::new(Mutex::new("".to_owned()));
     static ref IS_REMOTE_MODIFY_ENABLED_BY_CONTROL_PERMISSIONS : Arc<Mutex<Option<bool>>> = Arc::new(Mutex::new(None));
-    // Global Sciter window HWND (isize) for calling UI functions from async contexts
-    static ref SCITER_HWND : Mutex<Option<isize>> = Mutex::new(None);
+    // Global Sciter window for calling UI functions from async contexts
+    static ref SCITER_WINDOW : Arc<Mutex<Option<sciter::Window>>> = Arc::new(Mutex::new(None));
 }
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -91,11 +91,9 @@ lazy_static::lazy_static! {
 
 const INIT_ASYNC_JOB_STATUS: &str = " ";
 
-const INIT_ASYNC_JOB_STATUS: &str = " ";
-
-#[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub fn set_sciter_handler(window: sciter::Window) {
-    *crate::ui_interface::SCITER_HWND.lock().unwrap() = Some(window.get_hwnd() as isize);
+#[cfg(not(any(target_os = "android", target_os = "ios"))]
+pub fn set_sciter_handler(window: std::sync::Arc<sciter::Window>) {
+    *crate::ui_interface::SCITER_WINDOW.lock().unwrap() = Some(window);
 }
 
 #[cfg(any(target_os = "android", target_os = "ios", feature = "flutter"))]
@@ -1434,13 +1432,12 @@ async fn check_connect_status_(reconnect: bool, rx: mpsc::UnboundedReceiver<ipc:
                                     }
                                 }
                             }
-                            Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch })) => {
+                            Ok(Some(ipc::Data::Login { id, name, is_file_transfer, is_view_camera, is_terminal, peer_id, name: peer_name, avatar, authorized, port_forward, keyboard, clipboard, audio, file, file_transfer_enabled, restart, recording, block_input, privacy_mode, from_switch })) => {
                                 // Send login request to UI to show incoming request panel
-                                if let Some(hwnd) = *crate::ui_interface::SCITER_HWND.lock().unwrap() {
-                                    let w = unsafe { sciter::Window::from_hwnd(hwnd as *mut std::ffi::c_void) };
-                                    w.call(
+                                if let Some(w) = crate::ui_interface::SCITER_WINDOW.lock().unwrap().as_deref() {
+                                    h.call(
                                         "showIncomingRequest",
-                                        &make_args!(id, name, is_file_transfer, is_terminal, is_port_forward, is_rdp, from_switch),
+                                        &make_args!(id, name, is_file_transfer, is_terminal, false, false, from_switch),
                                     ).ok();
                                 }
                             }
