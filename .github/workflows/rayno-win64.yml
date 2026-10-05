@@ -1,11 +1,14 @@
 # 64-bit Windows build of RAYNODesk using the Flutter UI.
 #
-# The 32-bit build stays on the legacy Sciter UI (see rayno-win32.yml). Flutter
-# has no i686 Windows target, so this workflow covers x64 only.
+# The 32-bit build stays on the legacy Sciter UI (see rayno-win32.yml). Flutter has
+# no i686 Windows target, so this covers x64 only.
 #
-# flutter-build.yml builds every platform in its matrix (Windows, macOS, Linux,
-# Android, Web) and cannot be restricted, so this wrapper reuses it as-is and
-# adds a RAYNODesk-branded release on top of its x64 artifact.
+# This deliberately does NOT call flutter-build.yml. That reusable workflow builds
+# its whole matrix (Windows x64/ARM64, macOS, Linux, Android, iOS, Web) and has no
+# way to restrict it to a single platform, so calling it spent most of the run on
+# iOS/macOS/Linux targets that RAYNODesk does not ship. The steps below are the
+# x86_64-pc-windows-msvc job of that file, reduced to Windows and to the two
+# reusable jobs it actually depends on.
 name: RAYNODesk Windows 64-bit
 
 on:
@@ -17,56 +20,204 @@ on:
       - "flutter/**"
       - "src/**"
       - "libs/**"
+      - "res/**"
       - "build.py"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/patches/**"
       - ".github/workflows/rayno-win64.yml"
-      - ".github/workflows/flutter-build.yml"
       - ".github/workflows/bridge.yml"
       - ".github/workflows/third-party-RustDeskTempTopMostWindow.yml"
   schedule:
     - cron: "0 4 * * 1"
 
 env:
+  # Kept in sync with flutter-build.yml; the Flutter engine used for x64 is the
+  # rustdesk one built for this exact Flutter version.
+  LLVM_VERSION: "15.0.6"
+  FLUTTER_VERSION: "3.24.5"
+  # Same value as SCITER_RUST_VERSION upstream, but named for what it is here: this
+  # job builds the Flutter library, not Sciter. 1.78+ breaks the pinned sciter ABI.
+  RUST_VERSION: "1.75"
+  VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   VERSION: "1.5.0"
 
 jobs:
-  run-flutter-x64-build:
-    uses: ./.github/workflows/flutter-build.yml
-    secrets: inherit
+  # The Dart half of the FFI bridge. x64 uses the default 3.22.3-generated bridge
+  # (arm64 is the only target on 3.44), so bridge.yml runs unmodified; it uploads
+  # both variants and the build job picks the right one.
+  generate-bridge:
+    uses: ./.github/workflows/bridge.yml
+
+  build-topmost-helper:
+    # Small Win32 helper the app uses to raise itself above other windows.
+    uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
     with:
       upload-artifact: true
-      upload-tag: "nightly"
+      target: windows-2022
+      configuration: Release
+      platform: x64
+      target_version: Windows10
 
-  publish-release:
-    name: Publish RAYNODesk x64 release
-    # Needs the upstream x64 Windows artifact from the build job above.
-    needs: run-flutter-x64-build
-    runs-on: ubuntu-22.04
+  build-windows-x64:
+    name: x86_64-pc-windows-msvc
+    needs: [generate-bridge, build-topmost-helper]
+    runs-on: windows-2022
     permissions:
       contents: write
     steps:
-      - name: Download the x64 Flutter artifact
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Checkout source code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          submodules: recursive
+
+      - name: Restore bridge files
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          # Name comes from the "Upload unsigned" step of
-          # build-for-windows-flutter in flutter-build.yml.
-          name: rustdesk-unsigned-windows-x86_64
-          path: ./artifact
+          # x64 stays on the default bridge; the 3.44 one is for arm64 only.
+          name: bridge-artifact
+          path: ./
 
-      - name: Collect the Windows x64 binaries
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@ebc0426251bc40c7cd31162802432c68818ab8f0 # v2.0.9
+        with:
+          version: ${{ env.LLVM_VERSION }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: x86_64-pc-windows-msvc
+          components: "rustfmt"
+
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+        with:
+          prefix-key: windows-2022-flutter-x64
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: x64-windows-static
         run: |
-          set -eu
-          # flutter-build.yml moves runner/Release to ./rustdesk before uploading,
-          # so the artifact root is the Release directory itself. The whole folder
-          # is needed: a Flutter app only runs with its bundled DLLs next to it.
-          mkdir -p publish
-          cp -r artifact/. publish/
-          ls -l publish
-          if [ ! -f publish/rustdesk.exe ]; then
-            echo "rustdesk.exe not found in the downloaded artifact" >&2
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --triplet x64-windows-static \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              echo "======"
+              cat "$_1"
+              echo "======"
+              echo ""
+            done
             exit 1
           fi
-          mv publish/rustdesk.exe publish/RAYNODesk.exe
+          head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-x64-windows-static-rel-out.log" || true
+        shell: bash
+
+      - name: Install flutter
+        uses: subosito/flutter-action@2783a3f08e1baf891508463f8c6653c258246225  # v2.12.0
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
+
+      # https://github.com/flutter/flutter/issues/155685
+      - name: Replace engine with rustdesk custom flutter engine
+        shell: bash
+        run: |
+          flutter doctor -v
+          flutter precache --windows
+          curl -L -o windows-x64-release.zip https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip
+          unzip -q windows-x64-release.zip -d windows-x64-release
+          mv -f windows-x64-release/* "$(dirname $(dirname $(which flutter)))/bin/cache/artifacts/engine/windows-x64-release/"
+
+      - name: Patch flutter
+        shell: bash
+        run: |
+          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
+          cd $(dirname $(dirname $(which flutter)))
+          git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Build rustdesk
+        run: |
+          # --skip-portable-pack stops build.py from packing the portable installer;
+          # the packer runs below so the exe can be renamed to RAYNODesk first.
+          python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
+          mv ./flutter/build/windows/x64/runner/Release ./rustdesk
+
+          # usbmmidd is required for USB input redirection.
+          Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
+          Expand-Archive usbmmidd_v2.zip -DestinationPath .
+          Remove-Item -Path usbmmidd_v2\Win32 -Recurse
+          Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
+          mv -Force .\usbmmidd_v2 ./rustdesk
+
+          # Printer driver, kept optional: a failure here must not fail the build.
+          try {
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip -OutFile rustdesk_printer_driver_v4-1.4.zip
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip -OutFile printer_driver_adapter.zip
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/sha256sums -OutFile sha256sums
+
+            $checksum_driver = (Select-String -Path .\sha256sums -Pattern '^([a-fA-F0-9]{64}) \*rustdesk_printer_driver_v4-1\.4\.zip$').Matches.Groups[1].Value
+            $downloadsum_driver = Get-FileHash -Path rustdesk_printer_driver_v4-1.4.zip -Algorithm SHA256
+            $checksum_adapter = (Select-String -Path .\sha256sums -Pattern '^([a-fA-F0-9]{64}) \*printer_driver_adapter\.zip$').Matches.Groups[1].Value
+            $downloadsum_adapter = Get-FileHash -Path printer_driver_adapter.zip -Algorithm SHA256
+            if ($checksum_driver -eq $downloadsum_driver.Hash -and $checksum_adapter -eq $downloadsum_adapter.Hash) {
+              Expand-Archive rustdesk_printer_driver_v4-1.4.zip -DestinationPath .
+              mkdir ./rustdesk/drivers
+              mv -Force .\rustdesk_printer_driver_v4-1.4 ./rustdesk/drivers/RustDeskPrinterDriver
+              Expand-Archive printer_driver_adapter.zip -DestinationPath .
+              mv -Force .\printer_driver_adapter.dll ./rustdesk
+            } else {
+              Write-Output "printer driver checksums do not match, ignoring the files."
+            }
+          } catch {
+            Write-Host "Ignore the printer driver error."
+          }
+
+          # Rename before packing so the extracted process is RAYNODesk.exe.
+          mv .\rustdesk\rustdesk.exe .\rustdesk\RAYNODesk.exe
+
+      - name: Download RustDeskTempTopMostWindow artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: topmostwindow-artifacts-x64
+          path: "./rustdesk"
+
+      # The whole Release folder is needed: a Flutter app only runs with the DLLs and
+      # the flutter_assets directory next to the exe, so this is a directory upload
+      # rather than a single file.
+      - name: Upload unsigned
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raynodesk-unsigned-windows-x86_64
+          path: rustdesk
+
+      - name: Build self-extracted executable
+        shell: bash
+        run: |
+          sed -i '/dpiAware/d' res/manifest.xml
+          pushd ./libs/portable
+          pip3 install -r requirements.txt
+          python3 ./generate.py -f ../../rustdesk/ -o . -e ../../rustdesk/RAYNODesk.exe
+          popd
+          mkdir -p ./SignOutput
+          mv ./target/release/rustdesk-portable-packer.exe ./SignOutput/RAYNODesk-${{ env.VERSION }}-x64.exe
 
       - name: Publish Release
         uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v1
@@ -75,5 +226,10 @@ jobs:
           tag_name: RAYNODesk-${{ env.VERSION }}-x64-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           files: |
-            ./publish/RAYNODesk.exe
-            ./publish/*.dll
+            ./SignOutput/RAYNODesk-*.exe
+
+      - name: Upload the unpacked app folder
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raynodesk-windows-x64-app
+          path: rustdesk
