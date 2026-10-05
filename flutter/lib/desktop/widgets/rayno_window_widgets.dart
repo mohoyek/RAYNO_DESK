@@ -74,57 +74,44 @@ class WindowDragArea extends StatelessWidget {
 class RaynoHeader extends StatelessWidget {
   final VoidCallback? onChatTap;
   final bool chatHasUnread;
-  final VoidCallback? onClose;
 
   const RaynoHeader({
     super.key,
     this.onChatTap,
     this.chatHasUnread = false,
-    this.onClose,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = MyTheme.currentThemeMode() == ThemeMode.dark;
-    final fg = isDark ? Colors.white : const Color(0xFF222222);
     return WindowDragArea(
       child: Container(
         height: kRaynoHeaderHeight.toDouble(),
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF5F5F7),
+        decoration: const BoxDecoration(
+          // The host panel is always dark, independent of the app theme.
+          color: Color(0xFF1E1E1E),
           border: Border(
-            bottom: BorderSide(
-              color: isDark ? const Color(0xFF444444) : const Color(0xFFE2E2E6),
-            ),
+            bottom: BorderSide(color: Color(0xFF444444)),
           ),
         ),
         child: Row(
           children: [
-            loadIcon(26),
-            const SizedBox(width: 8),
             Text(
-              'راینو دسک',
+              'RAYNO DESK',
               style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: fg,
+                letterSpacing: 1.2,
+                color: Colors.white,
               ),
             ),
             const Spacer(),
             _HeaderIconButton(
               icon: Icons.chat_bubble_outline,
               tooltip: 'چت',
-              color: fg,
+              color: Colors.white,
               badge: chatHasUnread,
               onTap: onChatTap,
-            ),
-            const SizedBox(width: 4),
-            _HeaderIconButton(
-              icon: Icons.close,
-              tooltip: 'بستن',
-              color: fg,
-              onTap: onClose ?? () => windowManager.close(),
             ),
           ],
         ),
@@ -200,20 +187,17 @@ class _HeaderIconButtonState extends State<_HeaderIconButton> {
   }
 }
 
-/// Aggregate connectivity used by the three status lights.
+/// Aggregate connectivity shown by the two status lights.
 class RaynoConnectivity {
   final bool internet;
   final bool server;
-  final bool agent;
 
   const RaynoConnectivity({
     required this.internet,
     required this.server,
-    required this.agent,
   });
 
-  static const offline = RaynoConnectivity(
-      internet: false, server: false, agent: false);
+  static const offline = RaynoConnectivity(internet: false, server: false);
 }
 
 class RaynoStatusLights extends StatelessWidget {
@@ -235,17 +219,13 @@ class RaynoStatusLights extends StatelessWidget {
           children: [
             _StatusLight(label: 'اینترنت', sub: 'Internet', on: state.internet),
             _StatusLight(label: 'سرور', sub: 'Server', on: state.server),
-            _StatusLight(label: 'ارتباط کارشناس', sub: 'Agent', on: state.agent),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Text(
           statusText,
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).textTheme.bodySmall?.color,
-          ),
+          style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
         ),
       ],
     );
@@ -273,29 +253,30 @@ class _StatusLight extends StatelessWidget {
       children: [
         AnimatedContainer(
           duration: const Duration(milliseconds: 250),
-          width: 16,
-          height: 16,
+          width: 18,
+          height: 18,
           decoration: BoxDecoration(
             color: dot,
             shape: BoxShape.circle,
+            // A wider halo when connected reads as "live" without a legend.
             boxShadow: [
               BoxShadow(
-                color: dot.withValues(alpha: 0.55),
-                blurRadius: on ? 10 : 4,
-                spreadRadius: on ? 2 : 0,
+                color: dot.withValues(alpha: 0.7),
+                blurRadius: on ? 14 : 6,
+                spreadRadius: on ? 3 : 0,
               ),
             ],
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 7),
         Text(label,
-            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+            style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white)),
         Text(
           sub,
-          style: TextStyle(
-            fontSize: 9,
-            color: Theme.of(context).textTheme.bodySmall?.color,
-          ),
+          style: const TextStyle(fontSize: 9, color: Color(0xFF8A8A8A)),
         ),
       ],
     );
@@ -309,6 +290,7 @@ class RaynoChatPanel extends StatefulWidget {
   final String peerName;
   final List<String> messages;
   final Future<void> Function(String text) onSend;
+  final VoidCallback onAttach;
   final VoidCallback onClose;
 
   const RaynoChatPanel({
@@ -317,6 +299,7 @@ class RaynoChatPanel extends StatefulWidget {
     required this.peerName,
     required this.messages,
     required this.onSend,
+    required this.onAttach,
     required this.onClose,
   });
 
@@ -348,100 +331,126 @@ class _RaynoChatPanelState extends State<RaynoChatPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = MyTheme.currentThemeMode() == ThemeMode.dark;
     return Container(
       width: 250,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A1C),
         border: Border(
-          right: BorderSide(
-            color: isDark ? const Color(0xFF444444) : const Color(0xFFE2E2E6),
-            width: 1,
-          ),
+          right: BorderSide(color: Color(0xFF3A3A3C), width: 1),
         ),
       ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 6, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'چت${widget.peerName.isEmpty ? '' : ' — ${widget.peerName}'}',
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w600),
-                    overflow: TextOverflow.ellipsis,
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 8, 10, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    iconSize: 15,
+                    visualDensity: VisualDensity.compact,
+                    tooltip: 'بستن',
+                    color: const Color(0xFFBBBBBB),
+                    onPressed: widget.onClose,
+                    icon: const Icon(Icons.close),
                   ),
-                ),
-                IconButton(
-                  iconSize: 15,
-                  visualDensity: VisualDensity.compact,
-                  tooltip: 'بستن',
-                  onPressed: widget.onClose,
-                  icon: const Icon(Icons.close),
-                ),
-              ],
-            ),
-          ),
-          Divider(height: 1, color: Theme.of(context).dividerColor),
-          Expanded(
-            child: widget.messages.isEmpty
-                ? Center(
+                  Expanded(
                     child: Text(
-                      'پیامی وجود ندارد',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).textTheme.bodySmall?.color,
+                      widget.peerName.isEmpty
+                          ? 'چت پشتیبانی'
+                          : 'چت پشتیبانی — ${widget.peerName}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
                       ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(10),
-                    itemCount: widget.messages.length,
-                    itemBuilder: (_, i) => Align(
-                      alignment: Alignment.centerRight,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 6),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: MyTheme.accent.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(widget.messages[i], style: const TextStyle(fontSize: 12)),
-                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: const TextStyle(fontSize: 12),
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      hintText: 'پیام خود را تایپ کنید...',
-                      border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    ),
-                    onSubmitted: (_) => _send(),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                IconButton(
-                  tooltip: 'ارسال',
-                  onPressed: sending ? null : _send,
-                  icon: const Icon(Icons.send, size: 18),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const Divider(height: 1, color: Color(0xFF3A3A3C)),
+            Expanded(
+              child: widget.messages.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'پیامی وجود ندارد',
+                        style: TextStyle(fontSize: 12, color: Color(0xFF7A7A7A)),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(10),
+                      itemCount: widget.messages.length,
+                      itemBuilder: (_, i) => Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: MyTheme.accent.withValues(alpha: 0.22),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            widget.messages[i],
+                            style: const TextStyle(
+                                fontSize: 12, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      style: const TextStyle(
+                          fontSize: 12, color: Colors.white),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        hintText: 'پیام خود را تایپ کنید...',
+                        hintStyle: TextStyle(color: Color(0xFF7A7A7A)),
+                        filled: true,
+                        fillColor: Color(0xFF232326),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Color(0xFF3A3A3C)),
+                          borderRadius: BorderRadius.all(Radius.circular(18)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: MyTheme.accent),
+                          borderRadius: BorderRadius.all(Radius.circular(18)),
+                        ),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      onSubmitted: (_) => _send(),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    tooltip: 'پیوست',
+                    iconSize: 18,
+                    color: const Color(0xFFBBBBBB),
+                    onPressed: widget.onAttach,
+                    icon: const Icon(Icons.attach_file),
+                  ),
+                  IconButton(
+                    tooltip: 'ارسال',
+                    iconSize: 18,
+                    color: MyTheme.accent,
+                    onPressed: sending ? null : _send,
+                    icon: const Icon(Icons.send),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -476,76 +485,85 @@ class RaynoIncomingRequest extends StatelessWidget {
       if (isTerminal) 'ترمینال',
     ];
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      backgroundColor: const Color(0xFF1E1E20),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Color(0xFF3A3A3C)),
+      ),
       child: Container(
         width: 300,
         padding: const EdgeInsets.all(18),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('درخواست ورودی',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                children: [
-                  Text('شناسه درخواست‌کننده:',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).textTheme.bodySmall?.color)),
-                  const SizedBox(height: 4),
-                  SelectableText(
-                    peerId,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Consolas'),
-                  ),
-                  if (peerName.isNotEmpty) ...[
+        child: Directionality(
+          textDirection: TextDirection.rtl,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('درخواست ورودی',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white)),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF232326),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  children: [
+                    const Text('شناسه درخواست‌کننده:',
+                        style:
+                            TextStyle(fontSize: 11, color: Color(0xFF9E9E9E))),
                     const SizedBox(height: 4),
-                    Text(peerName,
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context).textTheme.bodySmall?.color)),
+                    SelectableText(
+                      peerId,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Consolas',
+                          color: Colors.white),
+                    ),
+                    if (peerName.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(peerName,
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFF9E9E9E))),
+                    ],
+                    if (tags.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(tags.join(' · '),
+                          style: const TextStyle(
+                              fontSize: 11, color: MyTheme.accent)),
+                    ],
                   ],
-                  if (tags.isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(tags.join(' · '),
-                        style: const TextStyle(
-                            fontSize: 11, color: MyTheme.accent)),
-                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _RequestButton(
+                      label: 'پذیرش',
+                      color: const Color(0xFF2ECC71),
+                      onPressed: busy ? null : onAccept,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _RequestButton(
+                      label: 'قطع ارتباط',
+                      color: const Color(0xFFE74C3C),
+                      onPressed: busy ? null : onReject,
+                    ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _RequestButton(
-                    label: 'پذیرش',
-                    color: const Color(0xFF2ECC71),
-                    onPressed: busy ? null : onAccept,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _RequestButton(
-                    label: 'قطع ارتباط',
-                    color: const Color(0xFFE74C3C),
-                    onPressed: busy ? null : onReject,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

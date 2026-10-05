@@ -106,6 +106,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                         peerName: _activePeerName,
                         messages: _chatMessages,
                         onSend: _sendChat,
+                        onAttach: _attachFile,
                         onClose: () => setState(() => _chatOpen = false),
                       )
                     : const SizedBox.shrink(),
@@ -126,36 +127,42 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   Widget buildRaynoMainColumn(BuildContext context) {
     final model = gFFI.serverModel;
-    return Container(
-      color: Theme.of(context).colorScheme.background,
-      child: Column(
-        children: [
-          RaynoHeader(
-            chatHasUnread: _chatUnread,
-            onChatTap: _openChat,
-            onClose: () => windowManager.close(),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              controller: _leftPaneScrollController,
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _RaynoIdCard(id: (model.serverId as IDTextEditingController).id),
-                  const SizedBox(height: 18),
-                  RaynoStatusLights(
-                    state: _connectivity,
-                    statusText: _statusText(),
-                  ),
-                  const SizedBox(height: 18),
-                  if (!bind.isOutgoingOnly()) buildPasswordBoard(context),
-                  ..._buildRaynoHelpCards(context),
-                ],
+    // The host panel is always dark, so scope the app's dark theme over it. Without
+    // this the shared password board would paint dark text on the dark background
+    // when the rest of the app is in light mode.
+    return Theme(
+      data: MyTheme.darkTheme,
+      child: Container(
+        color: const Color(0xFF141416),
+        child: Column(
+          children: [
+            RaynoHeader(
+              chatHasUnread: _chatUnread,
+              onChatTap: _openChat,
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _leftPaneScrollController,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _RaynoIdCard(
+                        id: (model.serverId as IDTextEditingController).id),
+                    const SizedBox(height: 18),
+                    RaynoStatusLights(
+                      state: _connectivity,
+                      statusText: _statusText(),
+                    ),
+                    const SizedBox(height: 18),
+                    if (!bind.isOutgoingOnly()) buildPasswordBoard(context),
+                    ..._buildRaynoHelpCards(context),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -803,7 +810,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   String _statusText() {
   if (svcStopped.value) return 'سرویس متوقف است';
-  if (_connectivity.agent) return 'نشست فعال — در حال اشتراک‌گذاری';
   if (_connectivity.internet && _connectivity.server) return 'آماده پذیرش اتصال';
   if (_connectivity.internet) return 'سرور در دسترس نیست';
   return 'در حال اتصال به سرور...';
@@ -822,7 +828,6 @@ Future<void> _refreshConnectivity() async {
   } catch (_) {
     server = false;
   }
-  var agent = false;
   var connId = _activeConnId;
   var peerName = _activePeerName;
   try {
@@ -835,7 +840,6 @@ Future<void> _refreshConnectivity() async {
         peerName = (first['name'] ?? '') as String;
         // A pending (not yet authorized) client is what the request panel shows.
         final authorized = first['authorized'] == true;
-        agent = true;
         if (!authorized) {
           _incomingRequest = _RaynoPendingRequest(
             connId: connId!,
@@ -851,14 +855,13 @@ Future<void> _refreshConnectivity() async {
       _incomingRequest = null;
     }
   } catch (_) {
-    agent = false;
+    // The client list is unavailable; leave any pending request as-is.
   }
   if (!mounted) return;
   setState(() {
     _connectivity = RaynoConnectivity(
       internet: online && !svcStopped.value,
       server: server && !svcStopped.value,
-      agent: agent,
     );
     _activeConnId = connId;
     _activePeerName = peerName;
@@ -870,6 +873,22 @@ void _openChat() {
     _chatOpen = !_chatOpen;
     if (_chatOpen) _chatUnread = false;
   });
+}
+
+/// File transfer needs a live session's FileController, which only exists on a
+/// connected session page. On the host panel there is no such object, so the
+/// attachment button reports that instead of appearing to do nothing.
+void _attachFile() {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: const Text(
+          'انتقال فایل پس از برقراری نشست فعال امکان‌پذیر است'),
+      backgroundColor: const Color(0xFF323236),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 3),
+    ),
+  );
 }
 
 Future<void> _sendChat(String text) async {
@@ -1373,7 +1392,7 @@ class _RaynoPendingRequest {
 
 /// Formats an id the way the password row does: groups of three digits.
 
-/// Large, centred device-ID card for the compact host window. Double tap
+/// Large, centred device-ID block for the compact host window. Double tap
 /// copies the id, matching the behaviour of the password row.
 class _RaynoIdCard extends StatelessWidget {
   final String id;
@@ -1382,28 +1401,13 @@ class _RaynoIdCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = MyTheme.currentThemeMode() == ThemeMode.dark;
-    final fg = isDark ? Colors.white : const Color(0xFF1B1B1D);
-    final sub = isDark ? Colors.white54 : Colors.black54;
     final showing =
-        id.isNotEmpty ? formatID(id) : translate('Generating ...');
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1C) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? const Color(0xFF333333) : const Color(0xFFE3E3E8),
-        ),
-      ),
+        id.isNotEmpty ? 'ID: ${formatID(id)}' : translate('Generating ...');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'آیدی دستگاه',
-            style: TextStyle(fontSize: 11, color: sub),
-          ),
-          const SizedBox(height: 8),
           GestureDetector(
             onDoubleTap: () {
               Clipboard.setData(ClipboardData(text: id));
@@ -1413,11 +1417,13 @@ class _RaynoIdCard extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: Text(
                 showing,
-                style: TextStyle(
-                  fontSize: 28,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 34,
                   fontWeight: FontWeight.bold,
-                  letterSpacing: 1.5,
-                  color: fg,
+                  height: 1.15,
+                  letterSpacing: 1,
+                  color: Colors.white,
                   fontFamily: 'Consolas',
                 ),
               ),
