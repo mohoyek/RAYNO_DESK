@@ -153,13 +153,25 @@ jobs:
           cd $(dirname $(dirname $(which flutter)))
           git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
 
-      # GitHub hides the log of a failed run behind a login, which makes a failure
-      # here impossible to diagnose from outside. Tee the output and upload it so
-      # the failing compiler message is always readable.
+      # GitHub hides the log of a failed run behind a login, and artifact downloads
+      # need auth too, so a failure here is undiagnosable from outside. Emitting the
+      # tail of the log as ::error:: puts it in the run annotations, which the public
+      # API serves without a token.
       - name: Build rustdesk
         run: |
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram *>&1 | Tee-Object -FilePath build-log.txt
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($LASTEXITCODE -ne 0) {
+            # GitHub only surfaces the first few annotations, so pick the lines that
+            # carry the error rather than dumping the whole tail.
+            Get-Content .\build-log.txt -Tail 200 |
+              Select-String -Pattern 'Error|error:|Exception|failed|Failed|Could not|not found|Unsupported' |
+              Select-Object -Last 8 |
+              ForEach-Object {
+                $line = $_.Line -replace '%', '%25' -replace '\r', ''
+                Write-Host "::error::$line"
+              }
+            exit $LASTEXITCODE
+          }
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
           # usbmmidd is required for USB input redirection.
