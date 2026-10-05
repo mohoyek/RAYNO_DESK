@@ -375,6 +375,93 @@ function getAccountLabelWithHandle() {
     return '';
 }
 
+// Server profiles. RAYNO Desk is first so it is both the default and the first
+// entry of the filter row. The public entry keeps id/key empty, which is exactly
+// what using_public_server() checks for.
+const SERVER_PROFILES = [
+    { id: "rayno", name: "راینو دسک", server: "raynodesk.ir", key: "XbWSmwQT8aF9ndM2HGlHGInHXdIcRa4ZbjFBUVx68Mw=" },
+    { id: "asan", name: "آسان دسک", server: "rd.asandesk.ir", key: "joRoqzc0SDOHe61V9WrRORk4PqBVzBntfGtzveM3h8M=" },
+    { id: "public", name: "سرور عمومی", server: "", key: "" },
+];
+
+// Relay and API are intentionally cleared: with api-server empty the client
+// derives it from the ID server, and a leftover relay from the previous profile
+// would point the session at the wrong server.
+function apply_server_profile(profile) {
+    var configOptions = handler.get_options();
+    configOptions["custom-rendezvous-server"] = profile.server;
+    configOptions["key"] = profile.key;
+    configOptions["relay-server"] = "";
+    configOptions["api-server"] = "";
+    handler.set_options(configOptions);
+}
+
+function active_server_profile_id(configOptions) {
+    var cur = (configOptions["custom-rendezvous-server"] || "").trim();
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        if (SERVER_PROFILES[i].server == cur) {
+            return SERVER_PROFILES[i].id;
+        }
+    }
+    return "custom";
+}
+
+function open_network_settings_dialog() {
+    var configOptions = handler.get_options();
+    var active_id = active_server_profile_id(configOptions);
+    var cur_id = (configOptions["custom-rendezvous-server"] || "").trim();
+    var cur_key = (configOptions["key"] || "").trim();
+
+    var tabs = "";
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        var p = SERVER_PROFILES[i];
+        var cls = p.id == active_id ? ".server-tab.selected" : ".server-tab";
+        // No name attribute: msgbox.getValues() would otherwise fold these buttons
+        // into the submitted form values.
+        tabs += "<button class='custom-event " + cls + "' profile='" + p.id + "'>" + translate(p.name) + "</button>";
+    }
+
+    msgbox("custom-server", "Network Settings",
+        "<div .form .set-password .network-settings> \
+            <div .server-tabs>" + tabs + "</div> \
+            <div><span>" + translate("ID Server") + ": </span><input|text name='id' value='" + cur_id + "' /></div> \
+            <div><span>" + translate("Key") + ": </span><input|text name='key' value='" + cur_key + "' /></div> \
+            <div .network-hint>" + translate("Relay and API are derived from the ID server") + "</div> \
+            </div> \
+        ", "", function(res=null, show_progress) {
+            // A profile chip arrives here through msgbox's `.custom-event` handler,
+            // which passes the clicked element as the FIRST argument instead of the
+            // collected form values. Detect it by the marker attribute.
+            if (res && res.attributes && res.attributes["profile"]) {
+                var chosen = null;
+                for (var i = 0; i < SERVER_PROFILES.length; i++) {
+                    if (SERVER_PROFILES[i].id == res.attributes["profile"]) {
+                        chosen = SERVER_PROFILES[i];
+                        break;
+                    }
+                }
+                if (!chosen) return;
+                apply_server_profile(chosen);
+                // `.custom-event` does not close the dialog on its own, so close it
+                // before reopening; otherwise two msgboxes stack on top of each other.
+                closeMsgbox();
+                self.timer(100ms, function() { open_network_settings_dialog(); });
+                return;
+            }
+            if (!res) return;
+            if (typeof show_progress === 'function') show_progress();
+            var id = (res.id || "").trim();
+            var key = (res.key || "").trim();
+            if (id == cur_id && key == cur_key) return;
+            if (id) {
+                var err = handler.test_if_valid_server(id, true);
+                if (err) { if (typeof show_progress === 'function') show_progress(false, translate("ID Server") + ": " + err); return; }
+            }
+            apply_server_profile({ server: id, key: key });
+            if (typeof show_progress === 'function') show_progress(-1);
+        }, 260, get_msgbox_width());
+}
+
 // Shared dialog functions
 function open_custom_server_dialog() {
     var configOptions = handler.get_options();
@@ -1280,6 +1367,12 @@ function formatId(id) {
 }
 
 event keydown (evt) {
+    if (evt.ctrlKey && evt.altKey && evt.keyCode == Event.VK_S) {
+        if (!disable_settings && !hide_server_settings) {
+            open_network_settings_dialog();
+        }
+        return true;
+    }
     if (view.focus && view.focus.id != 'remote_id') {
         return;
     }

@@ -417,6 +417,42 @@ li:disabled, li:disabled:hover {
     opacity: 0.8;
 }
 
+/* Network settings: server profile filter */
+div#msgbox .network-settings .server-tabs {
+    flow: horizontal;
+    border-spacing: 0.4em;
+    margin-bottom: 1.2em;
+}
+
+div#msgbox .network-settings button.server-tab {
+    width: *;
+    height: 2.2em;
+    line-height: 2.2em;
+    text-align: center;
+    font-weight: bold;
+    border: color(border) solid 1px;
+    border-radius: 6px;
+    background: color(bg);
+    color: color(text);
+}
+
+div#msgbox .network-settings button.server-tab:hover {
+    border-color: color(accent);
+    color: color(accent);
+}
+
+div#msgbox .network-settings button.server-tab.selected {
+    background: color(accent);
+    border-color: color(accent);
+    color: color(bg);
+}
+
+div#msgbox .network-settings div.network-hint {
+    font-size: 0.85em;
+    color: color(lighter-text);
+    margin-top: 0.2em;
+}
+
 .grey-text {
   color: color(lighter-text) !important;
 }
