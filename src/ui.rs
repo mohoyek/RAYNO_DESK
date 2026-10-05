@@ -105,6 +105,7 @@ pub fn start(args: &mut [String]) {
         crate::common::check_software_update();
         frame.event_handler(UI {});
         frame.sciter_handler(UIHostHandler {});
+        // crate::ui_interface::set_sciter_handler(frame.clone());
         page = "index.html";
         // Start pulse audio local server.
         #[cfg(target_os = "linux")]
@@ -724,6 +725,22 @@ impl UI {
         }
         .to_string()
     }
+
+    pub fn authorize(&self, id: i32) {
+        crate::ui_cm_interface::authorize(id);
+    }
+
+    pub fn close_connection(&self, id: i32) {
+        crate::ui_cm_interface::close(id);
+    }
+
+    pub fn send_msg(&self, id: i32, text: String) {
+        crate::ui_cm_interface::send_chat(id, text);
+    }
+
+    pub fn get_session_active(&self) -> bool {
+        crate::ui_cm_interface::get_clients_length() > 0
+    }
 }
 
 impl sciter::EventHandler for UI {
@@ -829,6 +846,10 @@ impl sciter::EventHandler for UI {
         fn is_option_fixed(String);
         fn get_builtin_option(String);
         fn is_remote_modify_enabled_by_control_permissions();
+        fn authorize(i32);
+        fn close_connection(i32);
+        fn send_msg(i32, String);
+        fn get_session_active();
     }
 }
 

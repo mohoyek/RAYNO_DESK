@@ -582,6 +582,15 @@ function updateTheme() {
         // disable dark theme
         root_element.attributes.toggleClass("darktheme", false);
     }
+    // Also set on html element for window-frame="extended"
+    var html_el = $(html);
+    if (html_el) {
+        if (handler.get_option("allow-darktheme") == "Y") {
+            html_el.attributes.toggleClass("darktheme", true);
+        } else {
+            html_el.attributes.toggleClass("darktheme", false);
+        }
+    }
 }
 
 class MyIdMenu: Reactor.Component {
@@ -781,54 +790,182 @@ class App: Reactor.Component
 {
     function this() {
         app = this;
+        this.chat_open = false;
+        this.incoming_request = null;
     }
 
     function render() {
         var is_can_screen_recording = handler.is_can_screen_recording(false);
         return
             <div .app>
-                    <div .left-pane style="width:*">
-                    <div>
-                        {is_custom_client && handler.get_builtin_option("hide-powered-by-me") != "Y" ? <div .link #powered-by style="opacity:0.5;font-size:0.8em;text-decoration:underline">{translate('powered_by_me')}</div> : ""}
-                        <div .title style="flow:horizontal; position:relative; height:1.6em; line-height:1.6em">
-                            <span>{translate('Your Desktop')}</span>
+                <div class="main-content">
+                    <div class="id-section">
+                        <div class="id-label">آیدی دستگاه</div>
+                        <div class="id-value">
+                            {key_confirmed ? formatId(get_id()) : translate("Generating ...")}
                         </div>
-                        <div .lighter-text>{outgoing_only ? translate('outgoing_only_desk_tip') : translate('desk_tip')}</div>
-                        {outgoing_only ? <div style="position:absolute; left:-10000px; top:-10000px; width:0; height:0; overflow:hidden"><MyIdMenu /></div> : ""}
-                        {!outgoing_only && <div .your-desktop .id-box>
-                            <MyIdMenu />
-                            {key_confirmed ? <span .id-value><span .id-label>ID</span><input type="text" readonly value={formatId(get_id())}/></span> : translate("Generating ...")}
-                        </div>}
-                        {!outgoing_only && <PasswordArea />}
+                        <div #id-copy .id-copy title="کپی آیدی">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </div>
                     </div>
-                    {(!is_win || handler.is_installed() || disable_installation) ? "" : <InstallMe />}
-                    {software_update_url && !disable_installation ? <UpdateMe /> : ""}
-                    {is_win && handler.is_installed() && !software_update_url && handler.is_installed_lower_version() && !disable_installation ? <UpgradeMe /> : ""}
-                    {is_can_screen_recording ? "": <CanScreenRecording />}
-                    {is_can_screen_recording && !handler.is_process_trusted(false) ? <TrustMe /> : ""}
-                    {!service_stopped && is_can_screen_recording && handler.is_process_trusted(false) && handler.is_installed() && !handler.is_installed_daemon(false) ? <InstallDaemon /> : ""}
-                    {system_error ? <SystemError /> : ""}
-                    {!system_error && handler.is_login_wayland() && !handler.current_is_wayland() ? <FixWayland /> : ""}
-                    {!system_error && handler.current_is_wayland() ? <ModifyDefaultLogin /> : ""}
-                    {incoming_only ? <ConnectStatus @{this.connect_status} /> : ""}
+
+                    <div class="status-section">
+                        <div class="status-lights">
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-internet"></div>
+                                <div class="light-labels">
+                                    <span class="label-fa">اینترنت</span>
+                                    <span class="label-en">Internet</span>
+                                </div>
+                            </div>
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-server"></div>
+                                <div class="light-labels">
+                                    <span class="label-fa">سرور</span>
+                                    <span class="label-en">Server</span>
+                                </div>
+                            </div>
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-agent"></div>
+                                <div class="light-labels">
+                                    <span class="label-fa">ارتباط کارشناس</span>
+                                    <span class="label-en">Agent</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="status-text" id="status-text">
+                            {this.getStatusText()}
+                        </div>
+                    </div>
+
+                    <PasswordArea />
+
+                    {system_error && <div class="system-error">{system_error}</div>}
+                    {is_can_screen_recording && <CanScreenRecording />}
+                    {is_installed_daemon && <InstallDaemon />}
+                    {install_me && <InstallMe />}
+                    {upgrade_me && <UpgradeMe />}
+                    {trust_me && <TrustMe />}
+                    {fix_wayland && <ModifyDefaultLogin />}
+                    {!incoming_only && <div class="system-error">outgoing_only mode not supported</div>}
                 </div>
-                <div #overlay style="position: absolute;size:*;background:black;opacity:0.5;display:none" />
+
+                {this.chat_open && <ChatPanel />}
+
+                {this.incoming_request && <IncomingRequestPanel request={this.incoming_request} />}
+
+                <div #overlay class="overlay" style="display:none"></div>
             </div>; 
     }
 
-    event click $(button#connect) {
-        this.newRemote("connect");
+    function getStatusText() {
+        if (service_stopped) {
+            return "سرویس متوقف است — دکمه شروع را بزنید";
+        }
+        if (connect_status == -1) {
+            return "در حال اتصال به سرور...";
+        }
+        if (connect_status == 0) {
+            return "در حال برقراری اتصال...";
+        }
+        if (connect_status > 0) {
+            return "آماده پذیرش اتصال";
+        }
+        return "وضعیت ناشناخته";
+    }
+}
+class ChatPanel: Reactor.Component {
+    function this() {
+        this.messages = [];
     }
 
-    event click $(button#file-transfer) {
-        this.newRemote("file-transfer");
+    function render() {
+        var me = this;
+        return
+            <div .chat-panel>
+                <div .chat-header>
+                    <span .chat-title>چت</span>
+                    <button #chat-close .chat-close>
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div .chat-messages>
+                    {this.messages.length == 0 ? <div .chat-empty>پیامی وجود ندارد</div> : ""}
+                </div>
+                <div .chat-input-area>
+                    <input|text #chat-input .chat-input placeholder="پیام خود را تایپ کنید..." />
+                    <button #chat-send .chat-send>
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>;
     }
 
-    function newRemote(type) {
-        createNewConnect(this.remote_id.value, type);
+    event click $(button#chat-close) () {
+        app.chat_open = false;
+        app.update();
+    }
+
+    event click $(button#chat-send) () {
+        this.sendMessage();
+    }
+
+    event keydown $(input#chat-input) (evt) {
+        if (!evt.shortcutKey && isEnterKey(evt)) {
+            this.sendMessage();
+        }
+    }
+
+    function sendMessage() {
+        var input = $(input#chat-input);
+        if (!input) return;
+        var text = (input.value || "").trim();
+        if (!text) return;
+        // The peer's message channel lives in the connection-manager process, so
+        // the main window can only show local text until that path exists.
+        this.messages.push({ text: text, time: getNowStr(), self: true });
+        input.value = "";
+        this.update();
+        stdout.println("chat send:", text);
     }
 }
 
+class IncomingRequestPanel: Reactor.Component {
+    function this(params) {
+        this.request = params.request || {};
+    }
+
+    function render() {
+        return
+            <div .incoming-overlay>
+                <div .incoming-panel>
+                    <div>
+                        <span .incoming-title>درخواست ورودی</span>
+                    </div>
+                    <div .incoming-info>
+                        <span .incoming-label>شناسه درخواست‌کننده:</span>
+                        <div .incoming-id>{this.request.id || ""}</div>
+                        {this.request.name ? <div>{this.request.name}</div> : ""}
+                        {this.request.is_file_transfer ? <span .incoming-tag>انتقال فایل</span> : ""}
+                        {this.request.is_terminal ? <span .incoming-tag>ترمینال</span> : ""}
+                    </div>
+                    <div .incoming-actions>
+                        <button .incoming-btn .accept>پذیرش</button>
+                        <button .incoming-btn .reject>قطع ارتباط</button>
+                    </div>
+                </div>
+            </div>;
+    }
+}
 class InstallMe: Reactor.Component {
     function render() {
         return <div .install-me>
@@ -1412,6 +1549,21 @@ event click $(#powered-by) {
     handler.open_url("https://rustdesk.com");
 }
 
+event click $(#id-copy) {
+    // Clipboard writes need a backend call that the main window does not expose
+    // yet; the id is already selectable in .id-value, so just flag the intent.
+    stdout.println("copy id:", get_id());
+}
+
+event click $(#header-chat) {
+    app.chat_open = !app.chat_open;
+    app.update();
+}
+
+event click $(#header-close) {
+    view.close();
+}
+
 // Event handlers for outgoing_only mode (when menu items are in main UI, not in MyIdMenu)
 event click $(li#custom-server) (_, me) {
     if (!outgoing_only) return;
@@ -1435,17 +1587,48 @@ event click $(li#login) (_, me) {
 
 function self.closing() {
     var (x, y, w, h) = view.box(#rectw, #border, #screen);
+    handler.set_local_option("rayno-window-pos", x + "," + y);
     handler.closing(x, y, w, h);
     return true;
 }
 
 function self.ready() {
-    centerize(scaleIt(window_width), scaleIt(window_height));
-    if (!handler.get_remote_id()) {
-        view.focus = $(#remote_id);
+    var (sx, sy, sw, sh) = view.screenBox(#workarea, #rectw);
+    var w = clamp_window_dim((sw / 6).toInteger(), 320, 420);
+    var h = clamp_window_dim((w * 1.25).toInteger(), 400, 520);
+    var x = sx + sw - w - 10;
+    var y = sy + 10;
+
+    // Restore the last position only when it still fits on the current screen.
+    var pos = handler.get_local_option("rayno-window-pos");
+    if (pos) {
+        var parts = pos.split(",");
+        if (parts.length == 2) {
+            var px = parts[0].toInteger();
+            var py = parts[1].toInteger();
+            if (px >= sx && px + w <= sx + sw && py >= sy && py + h <= sy + sh) {
+                x = px;
+                y = py;
+            }
+        }
     }
+
+    view.windowMinSize = (w, h);
+    view.windowMaxSize = (w, h);
+    view.move(x, y, w, h);
+    view.windowTopmost = true;
+
     refreshCurrentUser();
     updateTheme();
+    updateStatusLights();
+    var logo = $(img#header-logo);
+    if (logo) logo.src = handler.get_icon();
+}
+
+function clamp_window_dim(v, lo, hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
 }
 
 function checkConnectStatus() {
@@ -1496,9 +1679,25 @@ function checkConnectStatus() {
             app.update();
         }
         check_if_overlay();
+        updateStatusLights();
         checkConnectStatus();    
     });                          
 }                                
+
+function updateStatusLights() {
+    var internet_on = connect_status > 0;
+    var server_on = !service_stopped && connect_status > 0;
+    var agent_on = handler.get_session_active();
+
+    set_light_state($(#dot-internet), internet_on);
+    set_light_state($(#dot-server), server_on);
+    set_light_state($(#dot-agent), agent_on);
+}
+
+function set_light_state(el, on) {
+    if (!el) return;
+    el.classList.toggle("online", on);
+}
                                  
 var enter = false;               
 function self.onMouse(evt) {     
