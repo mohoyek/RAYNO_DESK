@@ -497,7 +497,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Already exists", "درحال حاضر وجود دارد"),
         ("Change Password", "رمز عبور را تغییر دهید"),
         ("Refresh Password", "رمز عبور را تازه کنید"),
-        ("ID", "شناسه"),
+        ("ID", ""),
         ("Grid View", "نمای توری شکل"),
         ("List View", "نمایش به صورت لیست"),
         ("Select", "انتخاب کنید"),
