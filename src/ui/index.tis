@@ -33,6 +33,14 @@ var connect_status = tmp[0];
 var service_stopped = handler.get_option("stop-service") == "Y";
 var disable_udp = handler.get_option("disable-udp") == "Y";
 var using_public_server = handler.using_public_server();
+
+// Apply the Rayno Desk profile on first run. Only when the user has not
+// already picked a server (public server = empty custom-rendezvous-server),
+// so an existing configuration is never overwritten on upgrade.
+if (using_public_server && !is_custom_client) {
+    apply_server_profile(SERVER_PROFILES[0]);
+}
+
 var software_update_url = "";
 var key_confirmed = tmp[1];
 var system_error = "";
