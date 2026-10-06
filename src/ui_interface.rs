@@ -1424,6 +1424,23 @@ async fn check_connect_status_(reconnect: bool, rx: mpsc::UnboundedReceiver<ipc:
                                     }
                                 }
                             }
+                            Ok(Some(ipc::Data::Login {
+                            id,
+                            name,
+                            is_file_transfer,
+                            is_terminal,
+                            from_switch,
+                            ..
+                            })) => {
+                            log::info!(
+                            "incoming request: id={}, name={}, file_transfer={}, terminal={}, from_switch={}",
+                            id,
+                            name,
+                            is_file_transfer,
+                            is_terminal,
+                            from_switch
+                            );
+                            }
                             _ => {}
                         }
                     }

@@ -98,7 +98,19 @@ jobs:
           # Patch sciter x86
           sed -i 's/branch = "dyn"/branch = "dyn_x86"/g' ./Cargo.toml
           cargo update -p sciter-rs --precise 674e07d3066ca9a92ced3816203ab6b652629d1e
-          cargo build --locked --features inline,vram,hwcodec --release --bins
+          # GitHub hides the log of a failed run behind a login and artifact downloads
+          # need auth too, so a failure here is undiagnosable from outside. Tee the log
+          # and re-emit the compiler error lines as ::error:: so they land in the run
+          # annotations, which the public API serves without a token.
+          set -o pipefail
+          cargo build --locked --features inline,vram,hwcodec --release --bins 2>&1 | tee build-log.txt
+          if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+            grep -E '^(error|warning: unused)|^ *--> |^error\[' build-log.txt \
+              | tail -20 \
+              | sed 's/%/%25/g' \
+              | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          fi
           mkdir -p ./Release
           # Rename before packing so the extracted process is RAYNODesk.exe, not rustdesk.exe.
           mv ./target/release/rustdesk.exe ./Release/RAYNODesk.exe

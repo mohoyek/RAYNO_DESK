@@ -3256,7 +3256,9 @@ mod tests {
         assert!(should_throttle_log(
             "https://example.com/api/heartbeat?token=secret"
         ));
-        assert!(should_throttle_log("https://example.com/prefix/api/heartbeat"));
+        assert!(should_throttle_log(
+            "https://example.com/prefix/api/heartbeat"
+        ));
         assert!(!should_throttle_log("https://example.com/api/heartbeat2"));
         assert!(!should_throttle_log("https://example.com/api/sysinfo"));
         assert!(!should_throttle_log(

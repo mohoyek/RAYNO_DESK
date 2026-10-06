@@ -153,11 +153,25 @@ jobs:
           cd $(dirname $(dirname $(which flutter)))
           git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
 
+      # GitHub hides the log of a failed run behind a login, and artifact downloads
+      # need auth too, so a failure here is undiagnosable from outside. Emitting the
+      # tail of the log as ::error:: puts it in the run annotations, which the public
+      # API serves without a token.
       - name: Build rustdesk
         run: |
-          # --skip-portable-pack stops build.py from packing the portable installer;
-          # the packer runs below so the exe can be renamed to RAYNODesk first.
-          python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
+          python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram *>&1 | Tee-Object -FilePath build-log.txt
+          if ($LASTEXITCODE -ne 0) {
+            # GitHub only surfaces the first few annotations, so pick the lines that
+            # carry the error rather than dumping the whole tail.
+            Get-Content .\build-log.txt -Tail 200 |
+              Select-String -Pattern 'Error|error:|Exception|failed|Failed|Could not|not found|Unsupported' |
+              Select-Object -Last 8 |
+              ForEach-Object {
+                $line = $_.Line -replace '%', '%25' -replace '\r', ''
+                Write-Host "::error::$line"
+              }
+            exit $LASTEXITCODE
+          }
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
           # usbmmidd is required for USB input redirection.
@@ -198,6 +212,20 @@ jobs:
         with:
           name: topmostwindow-artifacts-x64
           path: "./rustdesk"
+
+      # Always uploaded: when the build fails this is the only way to read the
+      # compiler message without signing in to GitHub.
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raynodesk-build-log-x64
+          path: |
+            build-log.txt
+            flutter/build/windows/x64/.dart_tool/
+            flutter/.dart_tool/package_config.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       # The whole Release folder is needed: a Flutter app only runs with the DLLs and
       # the flutter_assets directory next to the exe, so this is a directory upload

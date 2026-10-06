@@ -417,6 +417,42 @@ li:disabled, li:disabled:hover {
     opacity: 0.8;
 }
 
+/* Network settings: server profile filter */
+div#msgbox .network-settings .server-tabs {
+    flow: horizontal;
+    border-spacing: 0.4em;
+    margin-bottom: 1.2em;
+}
+
+div#msgbox .network-settings button.server-tab {
+    width: *;
+    height: 2.2em;
+    line-height: 2.2em;
+    text-align: center;
+    font-weight: bold;
+    border: color(border) solid 1px;
+    border-radius: 6px;
+    background: color(bg);
+    color: color(text);
+}
+
+div#msgbox .network-settings button.server-tab:hover {
+    border-color: color(accent);
+    color: color(accent);
+}
+
+div#msgbox .network-settings button.server-tab.selected {
+    background: color(accent);
+    border-color: color(accent);
+    color: color(bg);
+}
+
+div#msgbox .network-settings div.network-hint {
+    font-size: 0.85em;
+    color: color(lighter-text);
+    margin-top: 0.2em;
+}
+
 .grey-text {
   color: color(lighter-text) !important;
 }
@@ -433,23 +469,435 @@ textarea.grey-text {
     }
 }
 
-/* Outgoing/desktop ID row. Kept separate from .your-desktop, which PasswordArea shares. */
-.id-box {
-    flow: horizontal;
-    align-items: center;
-    border: color(border) 1px solid;
-    border-radius: 4px;
-    padding: 0.5em;
+/* ===== RAYNO Desk - design system (Sciter-native CSS) =====
+   Sciter has no flexbox, no @keyframes/transition, no position:fixed and no
+   CSS var() fallbacks. Layout uses flow:/border-spacing/size/margin, spacing
+   uses border-spacing, centering uses \*\ margins, and animation is left to
+   :hover states only. */
+
+.app {
+    background: color(bg);
+    color: color(text);
+    size: *;
 }
 
-.id-box .id-value {
+.main-content {
+    flow: vertical;
+    padding: 1.4em;
+    border-spacing: 1.1em;
+}
+
+/* ---------- header (also the window drag handle) ---------- */
+
+header {
     flow: horizontal;
-    align-items: center;
+    vertical-align: middle;
+    border-spacing: 0.6em;
+    height: 44px;
+    padding: 0 0.8em;
+    background: color(gray-bg);
+    border-bottom: color(border) solid 1px;
+}
+
+header .window-icon {
+    size: 24px;
+}
+
+.header-brand {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.5em;
+}
+
+.header-logo {
+    size: 26px;
+    border-radius: 6px;
+    background-size: cover;
+    background-repeat: no-repeat;
+}
+
+.header-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: color(text);
+}
+
+/* absorbs the free space so the chat/close buttons sit at the right edge */
+.header-spacer {
     width: *;
 }
 
-.id-box .id-label {
-    text-align: right;
-    padding-right: 0.3em;
+.header-actions {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.3em;
+}
+
+.header-btn {
+    size: 30px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    padding: 0;
+}
+
+.header-btn:hover {
+    background: color(menu-hover);
+}
+
+.header-btn:active {
+    background: color(border);
+}
+
+.header-btn svg {
+    size: 18px;
+    background: none;
     color: color(light-text);
+}
+
+.header-btn:hover svg {
+    color: color(text);
+}
+
+.header-btn#header-close:hover {
+    background: color(blood-red);
+}
+
+.header-btn#header-close:hover svg {
+    color: white;
+}
+
+/* ---------- big ID ---------- */
+
+.id-section {
+    text-align: center;
+}
+
+.id-label {
+    font-size: 0.85em;
+    color: color(lighter-text);
+}
+
+.id-value {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: color(text);
+    margin: 0.25em 0;
+}
+
+.id-copy {
+    display: inline-block;
+    padding: 0.2em;
+    opacity: 0.5;
+}
+
+.id-copy:hover {
+    opacity: 1;
+}
+
+.id-copy svg {
+    size: 16px;
+    background: none;
+    color: color(light-text);
+}
+
+/* ---------- status lights ---------- */
+
+.status-section {
+    flow: vertical;
+    border-spacing: 0.8em;
+}
+
+.status-lights {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.8em;
+}
+
+/* split the free space on both sides so the row of lights is centred */
+.status-light:first-child {
+    margin-left: *;
+}
+
+.status-light:last-child {
+    margin-right: *;
+}
+
+.status-light {
+    flow: vertical;
+    vertical-align: middle;
+    border-spacing: 0.35em;
+}
+
+.light-dot {
+    size: 18px;
+    border-radius: 9px;
+    background: color(blood-red);
+}
+
+.light-dot.online {
+    background: color(dark-green);
+}
+
+html.darktheme .light-dot {
+    background: color(blood-red);
+}
+
+html.darktheme .light-dot.online {
+    background: color(dark-green);
+}
+
+.light-labels {
+    flow: vertical;
+    vertical-align: middle;
+    border-spacing: 0;
+    width: *;
+}
+
+.label-fa {
+    color: color(text);
+}
+
+.label-en {
+    font-size: 0.8em;
+    color: color(lighter-text);
+}
+
+.status-text {
+    text-align: center;
+    color: color(light-text);
+    font-size: 0.9em;
+}
+
+/* ---------- password ---------- */
+
+.main-content div.your-desktop {
+    flow: vertical;
+    border-spacing: 0.6em;
+    padding: 0;
+    border: none;
+}
+
+.main-content div.password {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.5em;
+}
+
+.main-content div.password input {
+    font-size: 1.1em;
+    text-align: center;
+    border-radius: 6px;
+    border: color(border) solid 1px;
+    background: color(bg);
+    color: color(text);
+    padding: 0.5em;
+    width: *;
+}
+
+.main-content div.password svg {
+    padding: 0.3em;
+    color: color(light-text);
+    background: none;
+}
+
+.main-content div.password svg:hover {
+    color: color(text);
+}
+
+/* ---------- chat panel (slides in from the left edge) ---------- */
+
+.chat-panel {
+    position: absolute;
+    left: 0;
+    top: 44px;
+    bottom: 0;
+    width: 260px;
+    background: color(bg);
+    border-right: color(border) solid 1px;
+    flow: vertical;
+}
+
+.chat-header {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.5em;
+    padding: 0.7em;
+    border-bottom: color(border) solid 1px;
+}
+
+.chat-title {
+    font-size: 0.95em;
+    font-weight: bold;
+    color: color(text);
+}
+
+.chat-close {
+    margin-left: *;
+    size: 26px;
+    border: none;
+    background: none;
+    border-radius: 6px;
+    padding: 0;
+}
+
+.chat-close:hover {
+    background: color(gray-bg);
+}
+
+.chat-close svg {
+    size: 14px;
+    background: none;
+    color: color(light-text);
+}
+
+.chat-messages {
+    width: *;
+    padding: 0.8em;
+    overflow-y: scroll-indicator;
+    border-spacing: 0.6em;
+}
+
+.chat-empty {
+    text-align: center;
+    color: color(lighter-text);
+    font-size: 0.9em;
+    padding: 1.5em 0;
+}
+
+.chat-input-area {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.5em;
+    padding: 0.6em;
+    border-top: color(border) solid 1px;
+}
+
+.chat-input {
+    width: *;
+    border-radius: 14px;
+    border: color(border) solid 1px;
+    background: color(gray-bg);
+    color: color(text);
+    padding: 0.4em 0.7em;
+    font-size: 0.9em;
+}
+
+.chat-send {
+    size: 32px;
+    border: none;
+    border-radius: 16px;
+    background: color(accent);
+    padding: 0;
+}
+
+.chat-send:hover {
+    background: color(button);
+}
+
+.chat-send svg {
+    size: 16px;
+    background: none;
+    color: color(bg);
+}
+
+/* ---------- incoming request panel ---------- */
+
+.incoming-overlay {
+    position: absolute;
+    size: *;
+    flow: horizontal;
+    background: rgb(0, 0, 0);
+    opacity: 0.55;
+}
+
+.incoming-panel {
+    margin: *;
+    flow: vertical;
+    border-spacing: 1em;
+    padding: 1.4em;
+    width: 280px;
+    background: color(bg);
+    border: color(border) solid 1px;
+    border-radius: 12px;
+}
+
+.incoming-title {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: color(text);
+}
+
+.incoming-info {
+    flow: vertical;
+    border-spacing: 0.3em;
+    padding: 0.8em;
+    border-radius: 8px;
+    background: color(gray-bg);
+}
+
+.incoming-label {
+    font-size: 0.85em;
+    color: color(lighter-text);
+}
+
+.incoming-id {
+    font-size: 1.15em;
+    font-weight: bold;
+    color: color(text);
+}
+
+.incoming-tag {
+    color: color(accent);
+    font-size: 0.85em;
+}
+
+.incoming-actions {
+    flow: horizontal;
+    vertical-align: middle;
+    border-spacing: 0.6em;
+}
+
+.incoming-btn {
+    width: *;
+    height: 2.2em;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+.incoming-btn.accept {
+    background: color(dark-green);
+    color: white;
+}
+
+.incoming-btn.accept:hover {
+    opacity: 0.85;
+}
+
+.incoming-btn.reject {
+    background: color(blood-red);
+    color: white;
+}
+
+.incoming-btn.reject:hover {
+    opacity: 0.85;
+}
+
+/* ---------- misc ---------- */
+
+.system-error {
+    padding: 0.8em;
+    border-radius: 8px;
+    background: color(gray-bg);
+    border: color(blood-red) solid 1px;
+    color: color(blood-red);
+    text-align: center;
+}
+
+.overlay {
+    position: absolute;
+    size: *;
+    background: rgb(0, 0, 0);
+    opacity: 0.5;
 }
