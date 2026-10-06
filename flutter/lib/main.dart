@@ -10,6 +10,7 @@ import 'package:flutter_hbb/common/widgets/overlay.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/pages/install_page.dart';
 import 'package:flutter_hbb/desktop/pages/server_page.dart';
+import 'package:flutter_hbb/desktop/widgets/rayno_window_widgets.dart';
 import 'package:flutter_hbb/desktop/screen/desktop_file_transfer_screen.dart';
 import 'package:flutter_hbb/desktop/screen/desktop_view_camera_screen.dart';
 import 'package:flutter_hbb/desktop/screen/desktop_port_forward_screen.dart';
@@ -22,6 +23,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:window_size/window_size.dart' show getScreenList;
 
 import 'common.dart';
 import 'consts.dart';
@@ -149,12 +151,40 @@ void runMainApp(bool startService) async {
         bind.mainGetBuildinOption(key: "main-window-always-on-top") == 'Y';
   }
 
+  // The incoming-only host window is a compact, fixed panel pinned to the
+  // top-right corner and kept above other windows.
+  final compactHost = isDesktop && bind.isIncomingOnly();
+  // Non-null whenever compactHost is true; the compiler cannot see that, so the
+  // nullable type is unwrapped once below.
+  Size? mainWindowSize;
+  if (compactHost) {
+    final screens = await getScreenList();
+    final frame = screens.isEmpty ? null : screens.first.visibleFrame;
+    final screenSize = frame == null
+        ? const Size(1920, 1080)
+        : Size(frame.width, frame.height);
+    mainWindowSize = raynoWindowSize(screenSize);
+    alwaysOnTop = true;
+  }
+
   // Set window option.
   WindowOptions windowOptions = getHiddenTitleBarWindowOptions(
-      isMainWindow: true, alwaysOnTop: alwaysOnTop);
+      isMainWindow: true,
+      alwaysOnTop: alwaysOnTop,
+      size: mainWindowSize);
   windowManager.waitUntilReadyToShow(windowOptions, () async {
-    // Restore the location of the main window before window hide or show.
-    await restoreWindowPosition(WindowType.Main);
+    if (compactHost) {
+      final panelSize = mainWindowSize!;
+      // A fixed-size panel must not be resized by the user.
+      await windowManager.setResizable(false);
+      await windowManager.setMinimumSize(panelSize);
+      await windowManager.setMaximumSize(panelSize);
+      final pos = await raynoRestorePosition(panelSize);
+      await windowManager.setPosition(pos, animate: false);
+    } else {
+      // Restore the location of the main window before window hide or show.
+      await restoreWindowPosition(WindowType.Main);
+    }
     // Check the startup argument, if we successfully handle the argument, we keep the main window hidden.
     final handledByUniLinks = await initUniLinks();
     debugPrint("handled by uni links: $handledByUniLinks");

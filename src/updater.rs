@@ -197,6 +197,7 @@ fn check_update(manually: bool) -> ResultType<()> {
         let download_url = update_url.replace("tag", "download");
         let version = download_url.split('/').last().unwrap_or_default();
         #[cfg(target_os = "windows")]
+        let app_name = crate::common::get_app_name().to_lowercase();
         let download_url = if cfg!(feature = "flutter") {
             let Some(arch) = crate::platform::windows::release_arch_suffix() else {
                 bail!(
@@ -205,14 +206,15 @@ fn check_update(manually: bool) -> ResultType<()> {
                 );
             };
             format!(
-                "{}/rustdesk-{}-{}.{}",
+                "{}/{}-{}-{}.{}",
                 download_url,
+                app_name,
                 version,
                 arch,
                 if update_msi { "msi" } else { "exe" }
             )
         } else {
-            format!("{}/rustdesk-{}-x86-sciter.exe", download_url, version)
+            format!("{}/{}-{}-x86-sciter.exe", download_url, app_name, version)
         };
         log::debug!("New version available: {}", &version);
         let client = create_http_client_with_url_strict(&download_url)?;
@@ -376,15 +378,28 @@ pub fn get_update_download_file_from_url(url: &str) -> Option<PathBuf> {
     let tag = segments.next()?;
     let filename = segments.next()?;
 
-    if owner != "rustdesk"
-        || repo != "rustdesk"
-        || releases != "releases"
+    if releases != "releases"
         || download != "download"
         || tag.is_empty()
         || segments.next().is_some()
         || !is_plain_update_filename(filename)
     {
         return None;
+    }
+
+    // Upstream RustDesk restricts the release to its own repo to guard against a
+    // compromised update server redirecting clients to a malicious fork. Custom
+    // builds relax that to a filename-prefix check: the asset must start with the
+    // app name, which is still unique per project.
+    if crate::is_rustdesk() {
+        if owner != "rustdesk" || repo != "rustdesk" {
+            return None;
+        }
+    } else {
+        let app_prefix = crate::common::get_app_name().to_lowercase();
+        if !filename.to_lowercase().starts_with(&app_prefix) {
+            return None;
+        }
     }
 
     Some(std::env::temp_dir().join(filename))
@@ -589,7 +604,8 @@ pub fn check_update_as_root() -> ResultType<bool> {
     let download_url = update_url.replace("tag", "download");
     let version = download_url.split('/').last().unwrap_or_default().to_string();
     let arch = if std::env::consts::ARCH == "aarch64" { "aarch64" } else { "x86_64" };
-    let dmg_url = format!("{}/rustdesk-{}-{}.dmg", download_url, version, arch);
+    let app_name = crate::common::get_app_name().to_lowercase();
+    let dmg_url = format!("{}/{}-{}-{}.dmg", download_url, app_name, version, arch);
     log::info!("[root-update] New version: {}, downloading from {}", version, dmg_url);
     // Validate URL against GitHub release allowlist before downloading as root
     let Some(file_path_validated) = get_update_download_file_from_url(&dmg_url) else {
@@ -619,7 +635,7 @@ pub fn check_update_as_root() -> ResultType<bool> {
         use std::os::unix::fs::PermissionsExt;
         std::fs::set_permissions(&private_tmp, std::fs::Permissions::from_mode(0o700))?;
     }
-    let filename = dmg_url.split('/').last().unwrap_or("rustdesk.dmg");
+    let filename = dmg_url.split('/').last().unwrap_or("raynoddesk.dmg");
     let file_path = std::path::PathBuf::from(format!("{}/{}", private_tmp, filename));
     let tmp_path = file_path.to_string_lossy().to_string();
     // Download
@@ -661,19 +677,24 @@ mod tests {
 
     #[test]
     fn update_download_file_accepts_expected_github_asset_urls() {
+        let app_name = crate::common::get_app_name().to_lowercase();
         let file = get_download_file_from_url(
-            "https://github.com/rustdesk/rustdesk/releases/download/1.4.0/rustdesk-1.4.0-x86_64.dmg",
+            &format!(
+                "https://github.com/rustdesk/rustdesk/releases/download/1.4.0/{}-1.4.0-x86_64.dmg",
+                app_name
+            ),
         )
         .expect("valid GitHub release asset URL");
 
         assert_eq!(
             file.file_name().and_then(|name| name.to_str()),
-            Some("rustdesk-1.4.0-x86_64.dmg")
+            Some(format!("{}-1.4.0-x86_64.dmg", app_name).as_str())
         );
     }
 
     #[test]
     fn update_download_file_rejects_untrusted_or_malformed_urls() {
+        let app_name = crate::common::get_app_name().to_lowercase();
         for url in [
             "http://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
             "https://example.com/rustdesk.exe",
@@ -685,6 +706,10 @@ mod tests {
             "https://github.com:443/rustdesk/rustdesk/releases/download/1/rustdesk.exe",
             "https://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe?download=1",
             "https://github.com/rustdesk/rustdesk/releases/download/1/rustdesk.exe#download",
+            // Filename must start with the app name prefix.
+            &format!(
+                "https://github.com/rustdesk/rustdesk/releases/download/1/{app_name}.exe"
+            ),
             "not a url",
         ] {
             assert!(get_download_file_from_url(url).is_none(), "{url}");

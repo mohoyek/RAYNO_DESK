@@ -1,6 +1,6 @@
 html {
-    var(accent): #0071ff;
-    var(button): #2C8CFF;
+    var(accent): #39B7FF;
+    var(button): #39B7FF;
     var(gray-bg): #eee;
     var(bg): white;
     var(border): #ccc;
@@ -117,13 +117,13 @@ textarea:empty {
 {
   .prev { display:none; }
   .next { display:none; }
-  .base, .next-page, .prev-page { background: white;}
-  .slider { background: #bbb; border: white solid 4px; }
+  .base, .next-page, .prev-page { background: color(gray-bg);}
+  .slider { background: color(hover-border); border: color(gray-bg) solid 4px; }
   .base:disabled { background: transparent; }
-  .slider:hover  { background: grey; }
-  .slider:active { background: grey; }
+  .slider:hover  { background: color(light-text); }
+  .slider:active { background: color(light-text); }
   .base { size: 16px; }
-  .corner { background: white; }
+  .corner { background: color(gray-bg); }
 }
 
 @mixin ELLIPSIS {
@@ -177,7 +177,7 @@ header div.window-icon {
 
 @media platform != "OSX" {
 header {
-  background: white;
+  background: color(bg);
   height: 30px;
 }
 
@@ -204,7 +204,7 @@ header caption {
     padding: 0 10px;
     width: 22px;
     position: absolute;
-    color: black;
+    color: color(text);
     border: none;
     background: none;
     border-radius: 0;
@@ -229,11 +229,11 @@ header caption {
   }
   button.window#minimize div {
     height: 3px;
-    border-bottom: black solid 1px;
+    border-bottom: color(text) solid 1px;
     width: 12px;
   }
   button.window#maximize div {
-    border: black solid 1px;
+    border: color(text) solid 1px;
   }
   button.window#close:hover {
     background: #F82600;
@@ -405,7 +405,7 @@ menu li.line-through, menu li.line-through :hover {
 
 div#msgbox .msgbox-icon svg {
   size: 80px;
-  background: white;
+  background: color(bg);
 
 }
 

@@ -781,5 +781,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Relay fallback delay in seconds", "השהיה לפני מעבר לממסר בשניות"),
         ("relay-fallback-delay-tip", "כמה זמן חיבור ממסר שכבר נוצר ממתין לחיבור WebRTC הישיר לפני שישמש במקומו. הגדל כדי לתת לחיבור ישיר איטי יותר זמן; הקטן כדי לעבור מהר יותר לממסר ברשתות שבהן לא ניתן ליצור חיבור ישיר. השאר ריק לערך ברירת המחדל של 2.5 שניות."),
         ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
+        ("Network Settings", ""),
+        ("راینو دسک", ""),
+        ("آسان دسک", ""),
+        ("سرور عمومی", ""),
+        ("Relay and API are derived from the ID server", ""),
     ].iter().cloned().collect();
 }

@@ -16,6 +16,8 @@ import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
+import 'package:flutter_hbb/common/formatter/id_formatter.dart';
+import '../widgets/rayno_window_widgets.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
 import 'package:flutter_hbb/utils/platform_channel.dart';
 import 'package:get/get.dart';
@@ -32,7 +34,7 @@ class DesktopHomePage extends StatefulWidget {
   State<DesktopHomePage> createState() => _DesktopHomePageState();
 }
 
-const borderColor = Color(0xFF2F65BA);
+const borderColor = Color(0xFF39B7FF);
 
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
@@ -55,10 +57,26 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   final GlobalKey _childKey = GlobalKey();
 
+  // --- compact host window state ---
+  /// Set once the compact layout is decided so `build` does not flip back.
+  late final bool _raynoChrome;
+  bool _chatOpen = false;
+  bool _chatUnread = false;
+  int? _activeConnId;
+  String _activePeerName = '';
+  final List<String> _chatMessages = [];
+  _RaynoPendingRequest? _incomingRequest;
+  RaynoConnectivity _connectivity = RaynoConnectivity.offline;
+  Timer? _statusTimer;
+  String _lastPosKey = '';
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
     final isIncomingOnly = bind.isIncomingOnly();
+    if (isIncomingOnly && !_raynoChrome) {
+      return _buildRaynoHome(context);
+    }
     return _buildBlock(
         child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -68,6 +86,104 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
       ],
     ));
+  }
+
+  /// Compact single-purpose layout for the incoming-only host window.
+  Widget _buildRaynoHome(BuildContext context) {
+    return _buildBlock(
+      child: Stack(
+        children: [
+          Row(
+            children: [
+              // The chat panel slides in over the left edge.
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                width: _chatOpen ? 250 : 0,
+                child: _chatOpen
+                    ? RaynoChatPanel(
+                        connId: _activeConnId,
+                        peerName: _activePeerName,
+                        messages: _chatMessages,
+                        onSend: _sendChat,
+                        onAttach: _attachFile,
+                        onClose: () => setState(() => _chatOpen = false),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              Expanded(child: buildRaynoMainColumn(context)),
+            ],
+          ),
+          if (_incomingRequest != null)
+            Positioned.fill(
+              child: _incomingRequest!.buildDialog(context, _handleAccept, () {
+                setState(() => _incomingRequest = null);
+              }),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildRaynoMainColumn(BuildContext context) {
+    final model = gFFI.serverModel;
+    // The host panel is always dark, so scope the app's dark theme over it. Without
+    // this the shared password board would paint dark text on the dark background
+    // when the rest of the app is in light mode.
+    return Theme(
+      data: MyTheme.darkTheme,
+      child: Container(
+        color: const Color(0xFF141416),
+        child: Column(
+          children: [
+            RaynoHeader(
+              chatHasUnread: _chatUnread,
+              onChatTap: _openChat,
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: _leftPaneScrollController,
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _RaynoIdCard(
+                        id: (model.serverId as IDTextEditingController).id),
+                    const SizedBox(height: 18),
+                    RaynoStatusLights(
+                      state: _connectivity,
+                      statusText: _statusText(),
+                    ),
+                    const SizedBox(height: 18),
+                    if (!bind.isOutgoingOnly()) buildPasswordBoard(context),
+                    ..._buildRaynoHelpCards(context),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildRaynoHelpCards(BuildContext context) {
+    if (bind.mainGetBuildinOption(key: kOptionHideHelpCards) == 'Y') {
+      return const [];
+    }
+    if (bind.isWindows() && !bind.isDisableInstallation() && !bind.mainIsInstalled()) {
+      return [
+        const SizedBox(height: 14),
+        buildInstallCard(
+          "", 'install_tip', 'Install',
+          () async {
+            await rustDeskWinManager.closeAllSubWindows();
+            bind.mainGotoInstall();
+          },
+        ),
+      ];
+    }
+    return const [];
   }
 
   Widget _buildBlock({required Widget child}) {
@@ -692,9 +808,116 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     );
   }
 
+  String _statusText() {
+  if (svcStopped.value) return 'سرویس متوقف است';
+  if (_connectivity.internet && _connectivity.server) return 'آماده پذیرش اتصال';
+  if (_connectivity.internet) return 'سرور در دسترس نیست';
+  return 'در حال اتصال به سرور...';
+}
+
+Future<void> _refreshConnectivity() async {
+  // main_get_connect_status returns the rendezvous/relay reachability.
+  final status = await bind.mainGetConnectStatus();
+  final online = status.isNotEmpty && status != '-1' && status != '0';
+  var server = false;
+  try {
+    final apiServer = await bind.mainGetApiServer();
+    if (apiServer.isNotEmpty) {
+      server = (await bind.mainTestIfValidServer(server: apiServer, testWithProxy: false)).isEmpty;
+    }
+  } catch (_) {
+    server = false;
+  }
+  var connId = _activeConnId;
+  var peerName = _activePeerName;
+  try {
+    final raw = await bind.cmGetClientsState();
+    final clients = raw.isEmpty ? <dynamic>[] : jsonDecode(raw);
+    if (clients is List && clients.isNotEmpty) {
+      final first = clients.first;
+      if (first is Map) {
+        connId = first['id'] as int? ?? connId;
+        peerName = (first['name'] ?? '') as String;
+        // A pending (not yet authorized) client is what the request panel shows.
+        final authorized = first['authorized'] == true;
+        if (!authorized) {
+          _incomingRequest = _RaynoPendingRequest(
+            connId: connId!,
+            peerId: (first['peer_id'] ?? first['peerId'] ?? '') as String,
+            peerName: peerName,
+            isFileTransfer: first['is_file_transfer'] == true,
+            isTerminal: first['is_terminal'] == true,
+          );
+        }
+      }
+    } else if (_incomingRequest != null) {
+      // The peer list went empty, so the request is gone.
+      _incomingRequest = null;
+    }
+  } catch (_) {
+    // The client list is unavailable; leave any pending request as-is.
+  }
+  if (!mounted) return;
+  setState(() {
+    _connectivity = RaynoConnectivity(
+      internet: online && !svcStopped.value,
+      server: server && !svcStopped.value,
+    );
+    _activeConnId = connId;
+    _activePeerName = peerName;
+  });
+}
+
+void _openChat() {
+  setState(() {
+    _chatOpen = !_chatOpen;
+    if (_chatOpen) _chatUnread = false;
+  });
+}
+
+/// File transfer needs a live session's FileController, which only exists on a
+/// connected session page. On the host panel there is no such object, so the
+/// attachment button reports that instead of appearing to do nothing.
+void _attachFile() {
+  if (!mounted) return;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: const Text(
+          'انتقال فایل پس از برقراری نشست فعال امکان‌پذیر است'),
+      backgroundColor: const Color(0xFF323236),
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 3),
+    ),
+  );
+}
+
+Future<void> _sendChat(String text) async {
+  final id = _activeConnId;
+  if (id == null) {
+    if (mounted) {
+      setState(() => _chatMessages.add(text));
+    }
+    return;
+  }
+  await bind.cmSendChat(connId: id, msg: text);
+  if (mounted) setState(() => _chatMessages.add(text));
+}
+
+Future<void> _handleAccept() async {
+  final req = _incomingRequest;
+  if (req == null) return;
+  // The connection manager authorizes on password verification; for a
+  // keyboard-interactive accept we simply let the session continue.
+  setState(() => _incomingRequest = null);
+}
+
   @override
   void initState() {
     super.initState();
+    _raynoChrome = bind.isIncomingOnly();
+    if (_raynoChrome) {
+      _startPositionTracker();
+    }
     _updateTimer = periodic_immediate(const Duration(seconds: 1), () async {
       await gFFI.serverModel.fetchID();
       final error = await bind.mainGetError();
@@ -870,8 +1093,24 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _uniLinksSubscription?.cancel();
     Get.delete<RxBool>(tag: 'stop-service');
     _updateTimer?.cancel();
+    _statusTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  // Persist the panel position while it is being dragged so the next start
+  // reopens where the operator left it. Polling is cheap at this rate and
+  // avoids mixing in WindowListener just for the move event.
+  void _startPositionTracker() {
+    _statusTimer = periodic_immediate(const Duration(seconds: 2), () async {
+      await _refreshConnectivity();
+      if (!mounted) return;
+      final pos = await windowManager.getPosition();
+      final key = '${pos.dx.round()},${pos.dy.round()}';
+      if (key == _lastPosKey) return;
+      _lastPosKey = key;
+      bind.mainSetLocalOption(key: kRaynoWindowPosOption, value: key);
+    });
   }
 
   @override
@@ -1119,4 +1358,79 @@ void setPasswordDialog({VoidCallback? notEmptyCallback}) async {
       onCancel: close,
     );
   });
+}
+/// A peer waiting for the operator to accept or drop the connection.
+class _RaynoPendingRequest {
+  final int connId;
+  final String peerId;
+  final String peerName;
+  final bool isFileTransfer;
+  final bool isTerminal;
+
+  const _RaynoPendingRequest({
+    required this.connId,
+    required this.peerId,
+    required this.peerName,
+    required this.isFileTransfer,
+    required this.isTerminal,
+  });
+
+  Widget buildDialog(BuildContext context, VoidCallback onAccept, VoidCallback onReject) {
+    return Builder(
+      builder: (ctx) => RaynoIncomingRequest(
+        peerId: peerId,
+        peerName: peerName,
+        isFileTransfer: isFileTransfer,
+        isTerminal: isTerminal,
+        busy: false,
+        onAccept: onAccept,
+        onReject: onReject,
+      ),
+    );
+  }
+}
+
+/// Formats an id the way the password row does: groups of three digits.
+
+/// Large, centred device-ID block for the compact host window. Double tap
+/// copies the id, matching the behaviour of the password row.
+class _RaynoIdCard extends StatelessWidget {
+  final String id;
+
+  const _RaynoIdCard({required this.id});
+
+  @override
+  Widget build(BuildContext context) {
+    final showing =
+        id.isNotEmpty ? 'ID: ${formatID(id)}' : translate('Generating ...');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onDoubleTap: () {
+              Clipboard.setData(ClipboardData(text: id));
+              showToast(translate('Copied'));
+            },
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                showing,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.bold,
+                  height: 1.15,
+                  letterSpacing: 1,
+                  color: Colors.white,
+                  fontFamily: 'Consolas',
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

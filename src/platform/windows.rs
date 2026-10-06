@@ -4288,6 +4288,28 @@ pub fn try_set_window_foreground(window: HWND) {
     }
 }
 
+/// Drops the resize frame and the maximize box so the window keeps the size it
+/// was created with. WS_CAPTION is left alone, so the title bar still drags.
+pub fn disable_window_resize(window: HWND) {
+    unsafe {
+        let style = GetWindowLongW(window, GWL_STYLE) as DWORD;
+        SetWindowLongW(
+            window,
+            GWL_STYLE,
+            (style & !(WS_THICKFRAME | WS_MAXIMIZEBOX)) as _,
+        );
+        SetWindowPos(
+            window,
+            null_mut(),
+            0,
+            0,
+            0,
+            0,
+            SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE,
+        );
+    }
+}
+
 pub mod reg_display_settings {
     use hbb_common::ResultType;
     use serde_derive::{Deserialize, Serialize};

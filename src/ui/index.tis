@@ -4,7 +4,10 @@ stdout.println("is_xfce: ", is_xfce);
 
 // See default height in common.tis `msgbox()`.
 const msgbox_default_height = 180;
-const incoming_only_width = 180;
+// The main window has a fixed size, so popups are sized against it.
+const window_width = 300;
+const window_height = 420;
+const incoming_only_width = window_width;
 
 const outgoing_only = handler.is_outgoing_only();
 const incoming_only = handler.is_incoming_only();
@@ -21,11 +24,8 @@ const disable_change_permanent_password = handler.get_builtin_option("disable-ch
 const disable_change_id = handler.get_builtin_option("disable-change-id") == "Y";
 
 // html min-width, min-height not working on mac, below works for all
-if (incoming_only) {
-  view.windowMinSize = (scaleIt(incoming_only_width), scaleIt((handler.is_installed() || disable_installation) ? 300 : 390));
-} else {
-  view.windowMinSize = (scaleIt(560), scaleIt(300));
-}
+view.windowMinSize = (scaleIt(window_width), scaleIt(window_height));
+view.windowMaxSize = (scaleIt(window_width), scaleIt(window_height));
 
 var app;
 var tmp = handler.get_connect_status();
@@ -33,6 +33,14 @@ var connect_status = tmp[0];
 var service_stopped = handler.get_option("stop-service") == "Y";
 var disable_udp = handler.get_option("disable-udp") == "Y";
 var using_public_server = handler.using_public_server();
+
+// Apply the Rayno Desk profile on first run. Only when the user has not
+// already picked a server, so an existing configuration is never overwritten
+// on upgrade and a later switch back to the public server sticks.
+if (using_public_server && handler.get_option("rayno-server-set") != "Y") {
+    apply_server_profile(SERVER_PROFILES[0]);
+}
+
 var software_update_url = "";
 var key_confirmed = tmp[1];
 var system_error = "";
@@ -375,7 +383,179 @@ function getAccountLabelWithHandle() {
     return '';
 }
 
+// Server profiles. RAYNO Desk is first so it is both the default and the first
+// entry of the filter row. The public entry keeps id/key empty, which is exactly
+// what using_public_server() checks for.
+const SERVER_PROFILES = [
+    { id: "rayno", name: "راینو دسک", server: "raynodesk.ir", key: "XbWSmwQT8aF9ndM2HGlHGInHXdIcRa4ZbjFBUVx68Mw=" },
+    { id: "asan", name: "آسان دسک", server: "rd.asandesk.ir", key: "joRoqzc0SDOHe61V9WrRORk4PqBVzBntfGtzveM3h8M=" },
+    { id: "public", name: "سرور عمومی", server: "", key: "" },
+];
+
+// Relay and API are intentionally cleared: with api-server empty the client
+// derives it from the ID server, and a leftover relay from the previous profile
+// would point the session at the wrong server.
+function apply_server_profile(profile) {
+    var configOptions = handler.get_options();
+    configOptions["custom-rendezvous-server"] = profile.server;
+    configOptions["key"] = profile.key;
+    configOptions["relay-server"] = "";
+    configOptions["api-server"] = "";
+    handler.set_options(configOptions);
+}
+
+function active_server_profile_id(configOptions) {
+    var cur = (configOptions["custom-rendezvous-server"] || "").trim();
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        if (SERVER_PROFILES[i].server == cur) {
+            return SERVER_PROFILES[i].id;
+        }
+    }
+    return "custom";
+}
+
+function open_network_settings_dialog() {
+    var configOptions = handler.get_options();
+    var active_id = active_server_profile_id(configOptions);
+    var cur_id = (configOptions["custom-rendezvous-server"] || "").trim();
+    var cur_key = (configOptions["key"] || "").trim();
+
+    var tabs = "";
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        var p = SERVER_PROFILES[i];
+        var cls = p.id == active_id ? ".server-tab.selected" : ".server-tab";
+        // No name attribute: msgbox.getValues() would otherwise fold these buttons
+        // into the submitted form values.
+        tabs += "<button class='custom-event " + cls + "' profile='" + p.id + "'>" + translate(p.name) + "</button>";
+    }
+
+    msgbox("custom-server", "Network Settings",
+        "<div .form .set-password .network-settings> \
+            <div .server-tabs>" + tabs + "</div> \
+            <div><span>" + translate("ID Server") + ": </span><input|text name='id' value='" + cur_id + "' /></div> \
+            <div><span>" + translate("Key") + ": </span><input|text name='key' value='" + cur_key + "' /></div> \
+            <div .network-hint>" + translate("Relay and API are derived from the ID server") + "</div> \
+            </div> \
+        ", "", function(res=null, show_progress) {
+            // A profile chip arrives here through msgbox's `.custom-event` handler,
+            // which passes the clicked element as the FIRST argument instead of the
+            // collected form values. Detect it by the marker attribute.
+            if (res && res.attributes && res.attributes["profile"]) {
+                var chosen = null;
+                for (var i = 0; i < SERVER_PROFILES.length; i++) {
+                    if (SERVER_PROFILES[i].id == res.attributes["profile"]) {
+                        chosen = SERVER_PROFILES[i];
+                        break;
+                    }
+                }
+                if (!chosen) return;
+                apply_server_profile(chosen);
+                // `.custom-event` does not close the dialog on its own, so close it
+                // before reopening; otherwise two msgboxes stack on top of each other.
+                closeMsgbox();
+                self.timer(100ms, function() { open_network_settings_dialog(); });
+                return;
+            }
+            if (!res) return;
+            if (typeof show_progress === 'function') show_progress();
+            var id = (res.id || "").trim();
+            var key = (res.key || "").trim();
+            if (id == cur_id && key == cur_key) return;
+            if (id) {
+                var err = handler.test_if_valid_server(id, true);
+                if (err) { if (typeof show_progress === 'function') show_progress(false, translate("ID Server") + ": " + err); return; }
+            }
+            apply_server_profile({ server: id, key: key });
+            if (typeof show_progress === 'function') show_progress(-1);
+        }, 260, get_msgbox_width());
+}
+
 // Shared dialog functions
+// Server profiles. RAYNO Desk is first so it is both the default and the first
+// entry of the filter row. The public entry keeps id/key empty, which is exactly
+// what using_public_server() checks for.
+const SERVER_PROFILES = [
+    { id: "rayno", name: "راینو دسک", server: "raynodesk.ir", key: "XbWSmwQT8aF9ndM2HGlHGInHXdIcRa4ZbjFBUVx68Mw=" },
+    { id: "asan", name: "آسان دسک", server: "rd.asandesk.ir", key: "joRoqzc0SDOHe61V9WrRORk4PqBVzBntfGtzveM3h8M=" },
+    { id: "public", name: "سرور عمومی", server: "", key: "" },
+];
+
+// Relay and API are intentionally cleared: with api-server empty the client
+// derives it from the ID server, and a leftover relay from the previous profile
+// would point the session at the wrong server. rayno-server-set is set so the
+// first-run default is not reapplied on every restart.
+function apply_server_profile(profile) {
+    var configOptions = handler.get_options();
+    configOptions["custom-rendezvous-server"] = profile.server;
+    configOptions["key"] = profile.key;
+    configOptions["relay-server"] = "";
+    configOptions["api-server"] = "";
+    configOptions["rayno-server-set"] = "Y";
+    handler.set_options(configOptions);
+}
+
+function active_server_profile_id(configOptions) {
+    var cur = (configOptions["custom-rendezvous-server"] || "").trim();
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        if (SERVER_PROFILES[i].server == cur) {
+            return SERVER_PROFILES[i].id;
+        }
+    }
+    return "custom";
+}
+
+function open_network_settings_dialog() {
+    var configOptions = handler.get_options();
+    var active_id = active_server_profile_id(configOptions);
+    var cur_id = (configOptions["custom-rendezvous-server"] || "").trim();
+    var cur_key = (configOptions["key"] || "").trim();
+
+    var tabs = "";
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        var p = SERVER_PROFILES[i];
+        var cls = p.id == active_id ? ".server-tab.selected" : ".server-tab";
+        // No name attribute: msgbox.getValues() would otherwise fold these buttons
+        // into the submitted form values.
+        tabs += "<button class='custom-event " + cls + "' profile='" + p.id + "'>" + translate(p.name) + "</button>";
+    }
+
+    msgbox("custom-server", "Network Settings",
+           "<div .form .set-password> \
+            <div><span>" + translate("ID Server") + ": </span><input|text name='id' value='" + cur_id + "' /></div> \
+             <div><span>" + translate("Key") + ": </span><input|text name='key' value='" + cur_key + "' /></div> \
+            <div><span>" + translate("Relay and API are derived from the ID server") + "</span></div> \
+             </div> \
+         ", "", function(res=null, show_progress) {
+            if (res && res.attributes && res.attributes["profile"]) {
+                var chosen = null;
+                for (var i = 0; i < SERVER_PROFILES.length; i++) {
+                    if (SERVER_PROFILES[i].id == res.attributes["profile"]) {
+                        chosen = SERVER_PROFILES[i];
+                        break;
+                    }
+                }
+                if (!chosen) return;
+                apply_server_profile(chosen);
+                // `.custom-event` does not close the dialog on its own, so close it
+                // before reopening; otherwise two msgboxes stack on top of each other.
+                closeMsgbox();
+                self.timer(100ms, function() { open_network_settings_dialog(); });
+                return;
+            }
+            if (!res) return;
+            if (typeof show_progress === 'function') show_progress();
+            var id = (res.id || "").trim();
+            var key = (res.key || "").trim();
+            if (id == cur_id && key == cur_key) return;
+            if (id) {
+                var err = handler.test_if_valid_server(id, true);
+                if (err) { if (typeof show_progress === 'function') show_progress(false, translate("ID Server") + ": " + err); return; }
+            }
+            apply_server_profile({ server: id, key: key });
+            if (typeof show_progress === 'function') show_progress(-1);
+        }, 260, get_msgbox_width());
+}
+
 function open_custom_server_dialog() {
     var configOptions = handler.get_options();
     var old_relay = configOptions["relay-server"] || "";
@@ -495,6 +675,15 @@ function updateTheme() {
         // disable dark theme
         root_element.attributes.toggleClass("darktheme", false);
     }
+    // Also set on html element for window-frame="extended"
+    var html_el = $(html);
+    if (html_el) {
+        if (handler.get_option("allow-darktheme") == "Y") {
+            html_el.attributes.toggleClass("darktheme", true);
+        } else {
+            html_el.attributes.toggleClass("darktheme", false);
+        }
+    }
 }
 
 class MyIdMenu: Reactor.Component {
@@ -505,7 +694,7 @@ class MyIdMenu: Reactor.Component {
     function render() {
         return <div #myid>
             {this.renderPop()}
-            ID{svg_menu}
+            {translate('ID')}
         </div>;
     }
 
@@ -552,18 +741,6 @@ class MyIdMenu: Reactor.Component {
         </popup>;
     }
 
-    event click $(svg#menu) (_, me) {
-        this.showSettingMenu();
-    }
-
-    function showSettingMenu() {
-        audioInputMenu.update({ show: true });
-        this.toggleMenuState();
-        if (direct_server) direct_server.update();
-        var menu = this.$(menu#config-options);
-        this.$(svg#menu).popup(menu);
-    }
-
     event click $(li#login) () {
         login();
     }
@@ -603,7 +780,7 @@ class MyIdMenu: Reactor.Component {
             <div>Fingerprint: " + handler.get_fingerprint() + " \
             <div .link .custom-event url='https://rustdesk.com/privacy.html'>" + translate("Privacy Statement") + "</div> \
             <div .link .custom-event url='https://rustdesk.com'>" + translate("Website") + "</div> \
-	    <div style='background: #2c8cff; color: white; padding: 1em; margin-top: 1em;'>Copyright &copy; 2026 Purslane Tech Pte. Ltd.\
+	    <div style='background: #39B7FF; color: white; padding: 1em; margin-top: 1em;'>Copyright &copy; 2026 Purslane Tech Pte. Ltd.\
             <br />" + handler.get_license() + " \
             <p style='font-weight: bold'>" + translate("Slogan_tip") + "</p>\
             </div>\
@@ -706,69 +883,182 @@ class App: Reactor.Component
 {
     function this() {
         app = this;
+        this.chat_open = false;
+        this.incoming_request = null;
     }
 
     function render() {
         var is_can_screen_recording = handler.is_can_screen_recording(false);
         return
             <div .app>
-                    <div .left-pane style={incoming_only ? "width:*" : ""}>
-                    <div>
-                        {is_custom_client && handler.get_builtin_option("hide-powered-by-me") != "Y" ? <div .link #powered-by style="opacity:0.5;font-size:0.8em;text-decoration:underline">{translate('powered_by_me')}</div> : ""}
-                        <div .title style="flow:horizontal; position:relative; height:1.6em; line-height:1.6em">
-                            <span>{translate('Your Desktop')}</span>
-                            {outgoing_only ? <span .link #open-settings style="position:absolute; right:0; bottom:0; transform:scale(0.6); transform-origin:right bottom; opacity:0.85">{svg_menu}</span> : ""}
+                <div class="main-content">
+                    <div class="id-section">
+                        <div class="id-label">آیدی دستگاه</div>
+                        <div class="id-value">
+                            {key_confirmed ? formatId(get_id()) : translate("Generating ...")}
                         </div>
-                        <div .lighter-text>{outgoing_only ? translate('outgoing_only_desk_tip') : translate('desk_tip')}</div>
-                        {outgoing_only ? <div style="position:absolute; left:-10000px; top:-10000px; width:0; height:0; overflow:hidden"><MyIdMenu /></div> : ""}
-                        {!outgoing_only && <div .your-desktop>
-                            <MyIdMenu />
-                            {key_confirmed ? <input type="text" readonly value={formatId(get_id())}/> : translate("Generating ...")}
-                        </div>}
-                        {!outgoing_only && <PasswordArea />}
+                        <div #id-copy .id-copy title="کپی آیدی">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </div>
                     </div>
-                    {(!is_win || handler.is_installed() || disable_installation) ? "" : <InstallMe />}
-                    {software_update_url && !disable_installation ? <UpdateMe /> : ""}
-                    {is_win && handler.is_installed() && !software_update_url && handler.is_installed_lower_version() && !disable_installation ? <UpgradeMe /> : ""}
-                    {is_can_screen_recording ? "": <CanScreenRecording />}
-                    {is_can_screen_recording && !handler.is_process_trusted(false) ? <TrustMe /> : ""}
-                    {!service_stopped && is_can_screen_recording && handler.is_process_trusted(false) && handler.is_installed() && !handler.is_installed_daemon(false) ? <InstallDaemon /> : ""}
-                    {system_error ? <SystemError /> : ""}
-                    {!system_error && handler.is_login_wayland() && !handler.current_is_wayland() ? <FixWayland /> : ""}
-                    {!system_error && handler.current_is_wayland() ? <ModifyDefaultLogin /> : ""}
-                    {incoming_only ? <ConnectStatus @{this.connect_status} /> : ""}
-                </div>
-                {!incoming_only && <div .right-pane>
-                    <div .right-content>
-                        <div .card-connect>
-                            <div .title>{translate('Control Remote Desktop')}</div>
-                            <ID @{this.remote_id} />
-                            <div .right-buttons>
-                                <button .button .outline #file-transfer>{translate('Transfer file')}</button>
-                                <button .button #connect>{translate('Connect')}</button>
+
+                    <div class="status-section">
+                        <div class="status-lights">
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-internet"></div>
+                                <div class="light-labels">
+                                    <span class="label-fa">اینترنت</span>
+                                    <span class="label-en">Internet</span>
+                                </div>
+                            </div>
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-server"></div>
+                                <div class="light-labels">
+                                    <span class="label-fa">سرور</span>
+                                    <span class="label-en">Server</span>
+                                </div>
+                            </div>
+                            <div class="status-light">
+                                <div class="light-dot" id="dot-agent"></div>
+                                <div class="light-labels">
+                                    <span class="label-fa">ارتباط کارشناس</span>
+                                    <span class="label-en">Agent</span>
+                                </div>
                             </div>
                         </div>
-                        <MultipleSessions @{this.multipleSessions} />
+                        <div class="status-text" id="status-text">
+                            {this.getStatusText()}
+                        </div>
                     </div>
-                    {!outgoing_only ? <ConnectStatus @{this.connect_status} /> : ""}
-                </div>}
-                <div #overlay style="position: absolute;size:*;background:black;opacity:0.5;display:none" />
+
+                    <PasswordArea />
+
+                    {system_error && <div class="system-error">{system_error}</div>}
+                    {is_can_screen_recording && <CanScreenRecording />}
+                    {is_installed_daemon && <InstallDaemon />}
+                    {install_me && <InstallMe />}
+                    {upgrade_me && <UpgradeMe />}
+                    {trust_me && <TrustMe />}
+                    {fix_wayland && <ModifyDefaultLogin />}
+                    {!incoming_only && <div class="system-error">outgoing_only mode not supported</div>}
+                </div>
+
+                {this.chat_open && <ChatPanel />}
+
+                {this.incoming_request && <IncomingRequestPanel request={this.incoming_request} />}
+
+                <div #overlay class="overlay" style="display:none"></div>
             </div>; 
     }
 
-    event click $(button#connect) {
-        this.newRemote("connect");
+    function getStatusText() {
+        if (service_stopped) {
+            return "سرویس متوقف است — دکمه شروع را بزنید";
+        }
+        if (connect_status == -1) {
+            return "در حال اتصال به سرور...";
+        }
+        if (connect_status == 0) {
+            return "در حال برقراری اتصال...";
+        }
+        if (connect_status > 0) {
+            return "آماده پذیرش اتصال";
+        }
+        return "وضعیت ناشناخته";
+    }
+}
+class ChatPanel: Reactor.Component {
+    function this() {
+        this.messages = [];
     }
 
-    event click $(button#file-transfer) {
-        this.newRemote("file-transfer");
+    function render() {
+        var me = this;
+        return
+            <div .chat-panel>
+                <div .chat-header>
+                    <span .chat-title>چت</span>
+                    <button #chat-close .chat-close>
+                        <svg viewBox="0 0 24 24" width="14" height="14">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div .chat-messages>
+                    {this.messages.length == 0 ? <div .chat-empty>پیامی وجود ندارد</div> : ""}
+                </div>
+                <div .chat-input-area>
+                    <input|text #chat-input .chat-input placeholder="پیام خود را تایپ کنید..." />
+                    <button #chat-send .chat-send>
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>;
     }
 
-    function newRemote(type) {
-        createNewConnect(this.remote_id.value, type);
+    event click $(button#chat-close) () {
+        app.chat_open = false;
+        app.update();
+    }
+
+    event click $(button#chat-send) () {
+        this.sendMessage();
+    }
+
+    event keydown $(input#chat-input) (evt) {
+        if (!evt.shortcutKey && isEnterKey(evt)) {
+            this.sendMessage();
+        }
+    }
+
+    function sendMessage() {
+        var input = $(input#chat-input);
+        if (!input) return;
+        var text = (input.value || "").trim();
+        if (!text) return;
+        // The peer's message channel lives in the connection-manager process, so
+        // the main window can only show local text until that path exists.
+        this.messages.push({ text: text, time: getNowStr(), self: true });
+        input.value = "";
+        this.update();
+        stdout.println("chat send:", text);
     }
 }
 
+class IncomingRequestPanel: Reactor.Component {
+    function this(params) {
+        this.request = params.request || {};
+    }
+
+    function render() {
+        return
+            <div .incoming-overlay>
+                <div .incoming-panel>
+                    <div>
+                        <span .incoming-title>درخواست ورودی</span>
+                    </div>
+                    <div .incoming-info>
+                        <span .incoming-label>شناسه درخواست‌کننده:</span>
+                        <div .incoming-id>{this.request.id || ""}</div>
+                        {this.request.name ? <div>{this.request.name}</div> : ""}
+                        {this.request.is_file_transfer ? <span .incoming-tag>انتقال فایل</span> : ""}
+                        {this.request.is_terminal ? <span .incoming-tag>ترمینال</span> : ""}
+                    </div>
+                    <div .incoming-actions>
+                        <button .incoming-btn .accept>پذیرش</button>
+                        <button .incoming-btn .reject>قطع ارتباط</button>
+                    </div>
+                </div>
+            </div>;
+    }
+}
 class InstallMe: Reactor.Component {
     function render() {
         return <div .install-me>
@@ -1307,6 +1597,12 @@ function formatId(id) {
 }
 
 event keydown (evt) {
+    if (evt.ctrlKey && evt.altKey && evt.keyCode == Event.VK_S) {
+        if (!disable_settings && !hide_server_settings) {
+            open_network_settings_dialog();
+        }
+        return true;
+    }
     if (view.focus && view.focus.id != 'remote_id') {
         return;
     }
@@ -1346,8 +1642,19 @@ event click $(#powered-by) {
     handler.open_url("https://rustdesk.com");
 }
 
-event click $(#open-settings) (_, me) {
-    showSettings();
+event click $(#id-copy) {
+    // Clipboard writes need a backend call that the main window does not expose
+    // yet; the id is already selectable in .id-value, so just flag the intent.
+    stdout.println("copy id:", get_id());
+}
+
+event click $(#header-chat) {
+    app.chat_open = !app.chat_open;
+    app.update();
+}
+
+event click $(#header-close) {
+    view.close();
 }
 
 // Event handlers for outgoing_only mode (when menu items are in main UI, not in MyIdMenu)
@@ -1373,45 +1680,48 @@ event click $(li#login) (_, me) {
 
 function self.closing() {
     var (x, y, w, h) = view.box(#rectw, #border, #screen);
+    handler.set_local_option("rayno-window-pos", x + "," + y);
     handler.closing(x, y, w, h);
     return true;
 }
 
 function self.ready() {
-    var r = handler.get_size();
-    if (isReasonableSize(r) && r[2] > 0) {
-        var (sx, sy, sw, sh) = view.screenBox(#workarea, #rectw);
-        if (r[2] >= sw && r[3] >= sh) {
-            self.timer(1ms, function() { view.windowState = View.WINDOW_MAXIMIZED; });
-        } else {
-            view.move(r[0], r[1], incoming_only ? scaleIt(incoming_only_width) : r[2], r[3]);
+    var (sx, sy, sw, sh) = view.screenBox(#workarea, #rectw);
+    var w = clamp_window_dim((sw / 6).toInteger(), 320, 420);
+    var h = clamp_window_dim((w * 1.25).toInteger(), 400, 520);
+    var x = sx + sw - w - 10;
+    var y = sy + 10;
+
+    // Restore the last position only when it still fits on the current screen.
+    var pos = handler.get_local_option("rayno-window-pos");
+    if (pos) {
+        var parts = pos.split(",");
+        if (parts.length == 2) {
+            var px = parts[0].toInteger();
+            var py = parts[1].toInteger();
+            if (px >= sx && px + w <= sx + sw && py >= sy && py + h <= sy + sh) {
+                x = px;
+                y = py;
+            }
         }
-    } else {
-        centerize(scaleIt(incoming_only ? incoming_only_width : 800), scaleIt(incoming_only ? 390 : 600));
     }
-    if (!handler.get_remote_id()) {
-        view.focus = $(#remote_id);
-    }
+
+    view.windowMinSize = (w, h);
+    view.windowMaxSize = (w, h);
+    view.move(x, y, w, h);
+    view.windowTopmost = true;
+
     refreshCurrentUser();
     updateTheme();
+    updateStatusLights();
+    var logo = $(img#header-logo);
+    if (logo) logo.src = handler.get_icon();
 }
 
-function showAbout() {
-    myIdMenu.showAbout();
-}
-
-function showSettings() {
-    if ($(#overlay).style#display == 'block') return;
-    var menu = myIdMenu.$(menu#config-options);
-    var anchor = $(#open-settings);
-    if (!anchor) anchor = myIdMenu.$(svg#menu);
-    // show immediately at button, then update menu state asynchronously
-    anchor.popup(menu);
-    self.timer(1ms, function() {
-        audioInputMenu.update({ show: true });
-        myIdMenu.toggleMenuState();
-        if (direct_server) direct_server.update();
-    });
+function clamp_window_dim(v, lo, hi) {
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
 }
 
 function checkConnectStatus() {
@@ -1462,9 +1772,25 @@ function checkConnectStatus() {
             app.update();
         }
         check_if_overlay();
+        updateStatusLights();
         checkConnectStatus();    
     });                          
 }                                
+
+function updateStatusLights() {
+    var internet_on = connect_status > 0;
+    var server_on = !service_stopped && connect_status > 0;
+    var agent_on = handler.get_session_active();
+
+    set_light_state($(#dot-internet), internet_on);
+    set_light_state($(#dot-server), server_on);
+    set_light_state($(#dot-agent), agent_on);
+}
+
+function set_light_state(el, on) {
+    if (!el) return;
+    el.classList.toggle("online", on);
+}
                                  
 var enter = false;               
 function self.onMouse(evt) {     
