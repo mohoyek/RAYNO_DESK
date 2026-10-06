@@ -433,16 +433,12 @@ function open_network_settings_dialog() {
     }
 
     msgbox("custom-server", "Network Settings",
-        "<div .form .set-password .network-settings> \
-            <div .server-tabs>" + tabs + "</div> \
+           "<div .form .set-password> \
             <div><span>" + translate("ID Server") + ": </span><input|text name='id' value='" + cur_id + "' /></div> \
-            <div><span>" + translate("Key") + ": </span><input|text name='key' value='" + cur_key + "' /></div> \
-            <div .network-hint>" + translate("Relay and API are derived from the ID server") + "</div> \
-            </div> \
-        "", "", function(res=null, show_progress) {
-            // A profile chip arrives here through msgbox's `.custom-event` handler,
-            // which passes the clicked element as the FIRST argument instead of the
-            // collected form values. Detect it by the marker attribute.
+             <div><span>" + translate("Key") + ": </span><input|text name='key' value='" + cur_key + "' /></div> \
+            <div><span>" + translate("Relay and API are derived from the ID server") + "</span></div> \
+             </div> \
+         ", "", function(res=null, show_progress) {
             if (res && res.attributes && res.attributes["profile"]) {
                 var chosen = null;
                 for (var i = 0; i < SERVER_PROFILES.length; i++) {
