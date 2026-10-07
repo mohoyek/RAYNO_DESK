@@ -27,6 +27,13 @@ const disable_change_id = handler.get_builtin_option("disable-change-id") == "Y"
 view.windowMinSize = (scaleIt(window_width), scaleIt(window_height));
 view.windowMaxSize = (scaleIt(window_width), scaleIt(window_height));
 
+// Server profiles for RAYNODesk branding
+const SERVER_PROFILES = [
+    { id: "rayno", name: "راینو دسک", server: "raynodesk.ir", key: "XbWSmwQT8aF9ndM2HGlHGInHXdIcRa4ZbjFBUVx68Mw=" },
+    { id: "asan", name: "آسان دسک", server: "rd.asandesk.ir", key: "joRoqzc0SDOHe61V9WrRORk4PqBVzBntfGtzveM3h8M=" },
+    { id: "public", name: "سرور عمومی", server: "", key: "" },
+];
+
 var app;
 var tmp = handler.get_connect_status();
 var connect_status = tmp[0];
@@ -34,6 +41,10 @@ var service_stopped = handler.get_option("stop-service") == "Y";
 var disable_udp = handler.get_option("disable-udp") == "Y";
 var using_public_server = handler.using_public_server();
 var software_update_url = "";
+// Apply the Rayno Desk profile on first run
+if (using_public_server && handler.get_option("rayno-server-set") != "Y") {
+    apply_server_profile(SERVER_PROFILES[0]);
+}
 var key_confirmed = tmp[1];
 var system_error = "";
 
@@ -1308,7 +1319,7 @@ function formatId(id) {
 event keydown (evt) {
     if (evt.ctrlKey && evt.altKey && evt.keyCode == Event.VK_S) {
         if (!disable_settings) {
-            showSettings();
+            open_network_settings_dialog();
             return true;
         }
         return false;
@@ -1674,4 +1685,74 @@ function getHttpHeaders() {
 
 function getDeviceInfo() {
     return JSON.parse(handler.get_login_device_info());
+}
+
+// Server profile helpers
+function apply_server_profile(profile) {
+    var configOptions = handler.get_options();
+    configOptions["custom-rendezvous-server"] = profile.server;
+    configOptions["key"] = profile.key;
+    configOptions["relay-server"] = "";
+    configOptions["api-server"] = "";
+    configOptions["rayno-server-set"] = "Y";
+    handler.set_options(configOptions);
+}
+
+function active_server_profile_id(configOptions) {
+    var id = configOptions["custom-rendezvous-server"] || "";
+    var key = configOptions["key"] || "";
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        if (SERVER_PROFILES[i].server == id && SERVER_PROFILES[i].key == key) {
+            return SERVER_PROFILES[i].id;
+        }
+    }
+    return "public";
+}
+
+function open_network_settings_dialog() {
+    var configOptions = handler.get_options();
+    var active_id = active_server_profile_id(configOptions);
+    var cur_id = (configOptions["custom-rendezvous-server"] || "").trim();
+    var cur_key = (configOptions["key"] || "").trim();
+
+    var tabs = "";
+    for (var i = 0; i < SERVER_PROFILES.length; i++) {
+        var p = SERVER_PROFILES[i];
+        var cls = p.id == active_id ? ".server-tab.selected" : ".server-tab";
+        tabs += "<button class='custom-event " + cls + "' profile='" + p.id + "'>" + translate(p.name) + "</button>";
+    }
+
+    msgbox("custom-server", "Network Settings",
+        "<div .form .set-password> \
+            <div><span>" + translate("ID Server") + ": </span><input|text name='id' value='" + cur_id + "' /></div> \
+            <div><span>" + translate("Key") + ": </span><input|text name='key' value='" + cur_key + "' /></div> \
+            <div><span>" + translate("Relay and API are derived from the ID server") + "</span></div> \
+            </div> \
+        ", "", function(res=null, show_progress) {
+            if (res && res.attributes && res.attributes["profile"]) {
+                var chosen = null;
+                for (var i = 0; i < SERVER_PROFILES.length; i++) {
+                    if (SERVER_PROFILES[i].id == res.attributes["profile"]) {
+                        chosen = SERVER_PROFILES[i];
+                        break;
+                    }
+                }
+                if (!chosen) return;
+                apply_server_profile(chosen);
+                closeMsgbox();
+                self.timer(100ms, function() { open_network_settings_dialog(); });
+                return;
+            }
+            if (!res) return;
+            if (typeof show_progress === 'function') show_progress();
+            var id = (res.id || "").trim();
+            var key = (res.key || "").trim();
+            if (id == cur_id && key == cur_key) return;
+            if (id) {
+                var err = handler.test_if_valid_server(id, true);
+                if (err) { if (typeof show_progress === 'function') show_progress(false, translate("ID Server") + ": " + err); return; }
+            }
+            apply_server_profile({ server: id, key: key });
+            if (typeof show_progress === 'function') show_progress(-1);
+        }, 260, get_msgbox_width());
 }
