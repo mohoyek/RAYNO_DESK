@@ -5,8 +5,8 @@ stdout.println("is_xfce: ", is_xfce);
 // See default height in common.tis `msgbox()`.
 const msgbox_default_height = 180;
 // The main window has a fixed size, so popups are sized against it.
-const window_width = 200;
-const window_height = 550;
+const window_width = 300;
+const window_height = 450;
 const incoming_only_width = window_width;
 
 const outgoing_only = handler.is_outgoing_only();
