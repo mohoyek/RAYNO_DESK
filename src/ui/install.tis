@@ -1,5 +1,6 @@
 function self.ready() {
     centerize(scaleIt(800), scaleIt(600));
+    self.attributes.toggleClass("darktheme", handler.get_option("allow-darktheme") == "Y");
 }
 
 var install_path = "";
@@ -50,7 +51,7 @@ class Install: Reactor.Component {
     }
 
     event click $(#agreement) {
-        view.open_url("http://rustdesk.com/privacy");
+        view.open_url("https://github.com/mohoyek/RAYNO_DESK");
     }
 
     event click $(#submit) {

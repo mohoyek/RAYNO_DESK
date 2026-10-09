@@ -32,7 +32,7 @@ class DesktopHomePage extends StatefulWidget {
   State<DesktopHomePage> createState() => _DesktopHomePageState();
 }
 
-const borderColor = Color(0xFF2F65BA);
+const borderColor = Color(0xFF39B7FF);
 
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
@@ -142,7 +142,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     children: children,
                   ),
                 ),
-                Expanded(child: Container())
+Expanded(child: Container())
               ],
             ),
             if (isOutgoingOnly)
@@ -151,7 +151,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                 left: 12,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: InkWell(
+                  child: Ingram(
                     child: Obx(
                       () => Icon(
                         Icons.settings,
@@ -171,7 +171,34 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                     onHover: (value) => _editHover.value = value,
                   ),
                 ),
-              )
+              ),
+            if (isOutgoingOnly)
+              Positioned(
+                bottom: 6,
+                right: 12,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _serverButton('Rayno Desk', () => _applyServerProfile(
+                        idServer: 'raynodesk.ir',
+                        relayServer: 'raynodesk.ir',
+                        apiServer: 'https://raynodesk.ir/api',
+                        key: 'XbWSmwQT8aF9ndM2HGlHGInHXdIcRa4ZbjFBUVx68Mw=')),
+                    const SizedBox(width: 6),
+                    _serverButton('Asan Desk', () => _applyServerProfile(
+                        idServer: 'rd.asandesk.ir',
+                        relayServer: 'rd.asandesk.ir',
+                        apiServer: 'https://rd.asandesk.ir/api',
+                        key: 'joRoqzc0SDOHe61V9WrRORk4PqBVzBntfGtzveM3h8M=')),
+                    const SizedBox(width: 6),
+                    _serverButton('RustDesk', () => _applyServerProfile(
+                        idServer: '',
+                        relayServer: '',
+                        apiServer: 'https://api.rustdesk.com',
+                        key: '')),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
@@ -183,6 +210,38 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ConnectionPage(),
     );
+  }
+
+  Widget _serverButton(String label, VoidCallback onTap) {
+    return ElevatedButton(
+      onTap: onTap,
+      style: ElevatedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        shape: const BorderRadius.all(Radius.circular(8)),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        elevation: 2,
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+Future<void> _applyServerProfile({
+    required String idServer,
+    required String relayServer,
+    required String apiServer,
+    required String key,
+  }) async {
+    final config = ServerConfig();
+    config.idServer = idServer;
+    config.relayServer = relayServer;
+    config.apiServer = apiServer;
+    config.key = key;
+    await setServerConfig(null, null, config);
+    showToast('Server updated');
   }
 
   buildIDBoard(BuildContext context) {
