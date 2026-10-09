@@ -472,4 +472,5 @@ textarea.grey-text {
     text-align: right;
     padding-right: 0.3em;
     color: color(light-text);
+    display: none;
 }
