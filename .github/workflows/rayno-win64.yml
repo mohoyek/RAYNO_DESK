@@ -1,0 +1,21 @@
+# 64-bit Windows build for RAYNODesk (Flutter UI).
+#
+# The 32-bit Windows build (rayno-win32.yml) uses the legacy Sciter UI.
+# This runs the Flutter x64 job from flutter-build.yml, which produces
+# RAYNODesk.exe with the modern Flutter UI.
+name: RAYNODesk Windows 64-bit (Flutter)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - rayno-branding
+  schedule:
+    - cron: "0 3 * * 0"
+
+jobs:
+  build-for-windows-flutter:
+    uses: ./.github/workflows/flutter-build.yml
+    with:
+      upload-artifact: true
+      upload-tag: "64Bit-Win"
