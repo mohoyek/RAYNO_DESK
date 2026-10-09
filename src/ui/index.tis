@@ -516,7 +516,7 @@ class MyIdMenu: Reactor.Component {
     function render() {
         return <div #myid>
             {this.renderPop()}
-            {translate('ID')}
+
         </div>;
     }
 
@@ -740,7 +740,7 @@ class App: Reactor.Component
                     <div .right-content>
                         <div .card-connect>
                             <div .title>{translate('Control Remote Desktop')}</div>
-                            <ID @{this.remote_id} />
+                            <RemoteId @{this.remote_id} />
                             <div .right-buttons>
                                 <button .button .outline #file-transfer>{translate('Transfer file')}</button>
                                 <button .button #connect>{translate('Connect')}</button>
@@ -1265,7 +1265,7 @@ function updateSetPasswordSubmitState() {
     submit.state.disabled = !can_submit;
 }
 
-class ID: Reactor.Component {
+class RemoteId: Reactor.Component {
     function render() {
         return <input type="text" #remote_id .outline-focus novalue={translate("Enter Remote ID")}
         value={formatId(handler.get_remote_id())} />;
