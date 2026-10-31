@@ -193,7 +193,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
           children.add(const _General());
           break;
         case SettingsTabKey.security:
-          children.add(const _Security());
+          children.add(const _Safety());
           break;
         case SettingsTabKey.display:
           children.add(const _Display());
