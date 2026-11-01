@@ -1621,6 +1621,10 @@ bool option2bool(String option, String value) {
       option == kOptionStopService ||
       option == kOptionDirectServer ||
       option == kOptionForceAlwaysRelay) {
+    if (option == kOptionDirectServer && value.isEmpty) {
+      res = true;
+      return res;
+    }
     res = value == "Y";
   } else {
     // "" is true
