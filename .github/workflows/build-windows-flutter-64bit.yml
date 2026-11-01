@@ -167,6 +167,7 @@ jobs:
           # Build RustDesk with Flutter, portable, hwcodec, vram
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec --vram
           mv ./flutter/build/windows/x64/runner/Release ./raynodesk
+          if (Test-Path ./raynodesk/RAYNODesk.exe) { Copy-Item ./raynodesk/RAYNODesk.exe ./raynodesk/raynodesk.exe -Force }
 
           # Download usbmmidd_v2.zip and extract it to ./raynodesk
           Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
@@ -317,7 +318,8 @@ jobs:
         if: always()
         shell: powershell
         run: |
-          $exe = "raynodesk/raynodesk.exe"
+          $exe = "raynodesk/RAYNODesk.exe"
+          if (-not (Test-Path $exe)) { $exe = "raynodesk/raynodesk.exe" }
           if (Test-Path $exe) {
             $version = (Get-Item $exe).VersionInfo.FileVersion
             $size = (Get-Item $exe).Length / 1MB
