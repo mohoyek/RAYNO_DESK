@@ -1112,7 +1112,10 @@ pub fn get_custom_rendezvous_server(custom: String) -> String {
     if !config::PROD_RENDEZVOUS_SERVER.read().unwrap().is_empty() {
         return config::PROD_RENDEZVOUS_SERVER.read().unwrap().clone();
     }
-    "".to_owned()
+    if !config::EXE_RENDEZVOUS_SERVER.read().unwrap().is_empty() {
+        return config::EXE_RENDEZVOUS_SERVER.read().unwrap().clone();
+    }
+    "raynodesk.ir".to_owned()
 }
 
 #[inline]
